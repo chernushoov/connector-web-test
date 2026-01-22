@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/moderate",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/fraud-scan",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/daily-report",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
