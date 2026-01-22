@@ -19,108 +19,8 @@ import { WelcomeScreen, Navigation, OnboardingSlides, InteractiveTour } from '@/
 import { Button, IconButton } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/Input'
 import { BottomSheet, BottomSheetContent } from '@/components/ui/BottomSheet'
+import { mockWorkers, mockTasks } from '@/data/mockData'
 import type { MapMarker, QuickProfile, QuickTask } from '@/types'
-
-// ============================================
-// MOCK DATA (Replace with API)
-// ============================================
-
-const mockWorkers: QuickProfile[] = [
-  {
-    id: '1',
-    phone: '+972501234567',
-    name: 'Dmitry K.',
-    photoUrl: undefined,
-    skills: ['Construction', 'Repair', 'Moving'],
-    availabilityStatus: 'available',
-    rating: 4.8,
-    reviewCount: 24,
-    hourlyRate: 60,
-    location: { latitude: 32.0853, longitude: 34.7818, city: 'Tel Aviv' },
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    language: 'ru',
-    isVerified: true,
-    verificationStatus: 'verified',
-  },
-  {
-    id: '2',
-    phone: '+972502345678',
-    name: 'Maria S.',
-    photoUrl: undefined,
-    skills: ['Cleaning', 'Cooking'],
-    availabilityStatus: 'available',
-    rating: 4.9,
-    reviewCount: 31,
-    hourlyRate: 50,
-    location: { latitude: 32.0873, longitude: 34.7838, city: 'Tel Aviv' },
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    language: 'ru',
-    isVerified: true,
-    verificationStatus: 'verified',
-  },
-  {
-    id: '3',
-    phone: '+972503456789',
-    name: 'Alex M.',
-    photoUrl: undefined,
-    skills: ['Delivery', 'Driving'],
-    availabilityStatus: 'busy',
-    rating: 4.5,
-    reviewCount: 12,
-    hourlyRate: 45,
-    location: { latitude: 32.0833, longitude: 34.7798, city: 'Tel Aviv' },
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    language: 'ru',
-    isVerified: false,
-    verificationStatus: 'pending',
-  },
-]
-
-const mockTasks: QuickTask[] = [
-  {
-    id: 't1',
-    title: 'Help move furniture',
-    description: 'Need 2 people to help move a sofa and wardrobe from 3rd floor',
-    creator: {
-      id: 'c1',
-      name: 'Yosef B.',
-      phone: '+972504567890',
-      isVerified: true,
-    },
-    location: { latitude: 32.0863, longitude: 34.7828, city: 'Tel Aviv' },
-    when: 'now',
-    duration: 2,
-    amount: 400,
-    isNegotiable: false,
-    status: 'open',
-    createdAt: new Date(),
-    viewCount: 15,
-    responseCount: 3,
-  },
-  {
-    id: 't2',
-    title: 'Clean apartment after renovation',
-    description: 'Deep cleaning needed after construction work',
-    creator: {
-      id: 'c2',
-      name: 'Anna R.',
-      phone: '+972505678901',
-      isVerified: true,
-    },
-    location: { latitude: 32.0843, longitude: 34.7808, city: 'Tel Aviv' },
-    when: 'today',
-    duration: 4,
-    amount: 600,
-    isNegotiable: true,
-    status: 'open',
-    createdAt: new Date(),
-    viewCount: 8,
-    responseCount: 1,
-  },
-]
 
 // ============================================
 // HOME PAGE COMPONENT
@@ -141,13 +41,12 @@ export default function HomePage() {
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null)
 
   // Check if user has completed onboarding
-  // ВРЕМЕННО ОТКЛЮЧЕНО для тестирования - Welcome Screen будет показываться всегда
-  // useEffect(() => {
-  //   const hasCompletedOnboarding = sessionStorage.getItem('connector_onboarding_complete')
-  //   if (hasCompletedOnboarding) {
-  //     setOnboardingPhase('complete')
-  //   }
-  // }, [])
+  useEffect(() => {
+    const hasCompletedOnboarding = sessionStorage.getItem('connector_onboarding_complete')
+    if (hasCompletedOnboarding) {
+      setOnboardingPhase('complete')
+    }
+  }, [])
 
   const handleWelcomeComplete = useCallback(() => {
     setOnboardingPhase('slides')
@@ -157,14 +56,14 @@ export default function HomePage() {
     if (startTour) {
       setOnboardingPhase('tour')
     } else {
-      // sessionStorage.setItem('connector_onboarding_complete', 'true')
+      sessionStorage.setItem('connector_onboarding_complete', 'true')
       setOnboardingPhase('complete')
       setShowRegistration(true)
     }
   }, [])
 
   const handleTourComplete = useCallback(() => {
-    // sessionStorage.setItem('connector_onboarding_complete', 'true')
+    sessionStorage.setItem('connector_onboarding_complete', 'true')
     setOnboardingPhase('complete')
     setShowRegistration(true)
   }, [])
@@ -398,7 +297,7 @@ export default function HomePage() {
                   </div>
                   <div className="text-right">
                     <p className="text-white/80 text-sm">Avg. rate</p>
-                    <p className="text-2xl font-bold">₪52/h</p>
+                    <p className="text-2xl font-bold">₪{Math.round(mockWorkers.reduce((sum, w) => sum + (w.hourlyRate || 0), 0) / mockWorkers.length)}/h</p>
                   </div>
                 </div>
               </div>
