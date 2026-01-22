@@ -62,6 +62,7 @@ export default function WorkerDashboard() {
       <Header
         titleKey="worker.mode.title"
         showNotifications
+        showTrialBadge
         onNotifications={() => router.push('/notifications')}
         rightContent={
           <IconButton

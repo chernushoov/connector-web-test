@@ -43,6 +43,15 @@ export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'reject
 
 export type SubscriptionPlan = 'free' | 'pro' | 'business'
 
+export type TrialStatus = 'not_started' | 'active' | 'ending_soon' | 'ended'
+
+export type UserSubscriptionState =
+  | 'anonymous'
+  | 'trial_active'
+  | 'trial_ended'
+  | 'subscribed'
+  | 'free_limited'
+
 export type DayFilter = 'all' | 'today' | 'tomorrow' | 'week'
 
 // ============================================
@@ -338,6 +347,31 @@ export interface Subscription {
   endDate: Date
   autoRenew: boolean
   price: number
+}
+
+export interface TrialInfo {
+  status: TrialStatus
+  startedAt: Date | null
+  endsAt: Date | null
+  daysRemaining: number
+  hoursRemaining: number
+  stats: {
+    earnings: number
+    shiftsCompleted: number
+    applicationsApproved: number
+    profileViews: number
+  }
+}
+
+export interface PricingPlan {
+  id: SubscriptionPlan
+  name: string
+  price: number
+  period: 'month' | 'year'
+  features: string[]
+  limitations?: string[]
+  isPopular?: boolean
+  savings?: number
 }
 
 // ============================================

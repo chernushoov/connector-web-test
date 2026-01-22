@@ -53,6 +53,7 @@ export default function EmployerDashboard() {
       <Header
         titleKey="employer.mode.title"
         showNotifications
+        showTrialBadge
         onNotifications={() => router.push('/notifications')}
         rightContent={
           <Button

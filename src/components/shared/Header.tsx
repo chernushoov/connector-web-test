@@ -6,6 +6,7 @@ import { useUI, useConnectorStore } from '@/store'
 import { t } from '@/i18n/translations'
 import { ChevronLeft, ChevronRight, Bell, Search, Menu, X } from 'lucide-react'
 import { IconButton } from '@/components/ui/Button'
+import { TrialBadge } from '@/components/subscription'
 
 export interface HeaderProps {
   title?: string
@@ -14,6 +15,7 @@ export interface HeaderProps {
   showSearch?: boolean
   showNotifications?: boolean
   showMenu?: boolean
+  showTrialBadge?: boolean
   onBack?: () => void
   onSearch?: () => void
   onNotifications?: () => void
@@ -31,6 +33,7 @@ export function Header({
   showSearch = false,
   showNotifications = false,
   showMenu = false,
+  showTrialBadge = false,
   onBack,
   onSearch,
   onNotifications,
@@ -105,6 +108,10 @@ export function Header({
 
       {/* Right section */}
       <div className="flex items-center gap-2 min-w-[60px] justify-end">
+        {showTrialBadge && (
+          <TrialBadge variant="compact" />
+        )}
+
         {showSearch && (
           <IconButton
             icon={<Search className="w-5 h-5" />}

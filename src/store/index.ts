@@ -22,6 +22,10 @@ import type {
   FilterState,
   MapRegion,
   Notification,
+  TrialStatus,
+  UserSubscriptionState,
+  SubscriptionPlan,
+  PricingPlan,
 } from '@/types'
 
 // ============================================
@@ -136,6 +140,30 @@ interface UIState {
   }
 }
 
+interface SubscriptionState {
+  // Current status
+  subscriptionState: UserSubscriptionState
+  currentPlan: SubscriptionPlan
+
+  // Trial info
+  trialStatus: TrialStatus
+  trialStartedAt: Date | null
+  trialEndsAt: Date | null
+
+  // Stats during trial
+  trialStats: {
+    earnings: number
+    shiftsCompleted: number
+    applicationsApproved: number
+    profileViews: number
+    agencySavings: number
+  }
+
+  // Modals
+  showTrialEndModal: boolean
+  showPricingModal: boolean
+}
+
 // ============================================
 // COMBINED STORE STATE
 // ============================================
@@ -148,6 +176,7 @@ interface ConnectorStore {
   worker: WorkerState
   employer: EmployerState
   ui: UIState
+  subscription: SubscriptionState
 
   // Auth actions
   setPhone: (phone: string) => void
@@ -211,6 +240,19 @@ interface ConnectorStore {
   hideToast: () => void
   markNotificationRead: (id: string) => void
   markAllNotificationsRead: () => void
+
+  // Subscription actions
+  startTrial: () => void
+  checkTrialStatus: () => void
+  subscribe: (plan: SubscriptionPlan) => Promise<void>
+  cancelSubscription: () => Promise<void>
+  openTrialEndModal: () => void
+  closeTrialEndModal: () => void
+  openPricingModal: () => void
+  closePricingModal: () => void
+  updateTrialStats: (stats: Partial<SubscriptionState['trialStats']>) => void
+  getTrialDaysRemaining: () => number
+  getTrialHoursRemaining: () => number
 }
 
 // ============================================
@@ -314,6 +356,23 @@ const defaultUIState: UIState = {
   },
 }
 
+const defaultSubscriptionState: SubscriptionState = {
+  subscriptionState: 'anonymous',
+  currentPlan: 'free',
+  trialStatus: 'not_started',
+  trialStartedAt: null,
+  trialEndsAt: null,
+  trialStats: {
+    earnings: 0,
+    shiftsCompleted: 0,
+    applicationsApproved: 0,
+    profileViews: 0,
+    agencySavings: 0,
+  },
+  showTrialEndModal: false,
+  showPricingModal: false,
+}
+
 // ============================================
 // STORE IMPLEMENTATION
 // ============================================
@@ -329,6 +388,7 @@ export const useConnectorStore = create<ConnectorStore>()(
         worker: defaultWorkerState,
         employer: defaultEmployerState,
         ui: defaultUIState,
+        subscription: defaultSubscriptionState,
 
         // ========================================
         // AUTH ACTIONS
@@ -932,6 +992,119 @@ export const useConnectorStore = create<ConnectorStore>()(
             state.ui.notifications.forEach((n) => (n.read = true))
             state.ui.unreadCount = 0
           }),
+
+        // ========================================
+        // SUBSCRIPTION ACTIONS
+        // ========================================
+
+        startTrial: () =>
+          set((state) => {
+            const now = new Date()
+            const trialEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000) // 3 days
+
+            state.subscription.subscriptionState = 'trial_active'
+            state.subscription.trialStatus = 'active'
+            state.subscription.trialStartedAt = now
+            state.subscription.trialEndsAt = trialEnd
+            state.subscription.currentPlan = 'pro' // Full access during trial
+          }),
+
+        checkTrialStatus: () => {
+          const { trialEndsAt, trialStatus } = get().subscription
+
+          if (!trialEndsAt || trialStatus === 'ended') return
+
+          const now = new Date()
+          const timeRemaining = trialEndsAt.getTime() - now.getTime()
+          const hoursRemaining = timeRemaining / (1000 * 60 * 60)
+
+          set((state) => {
+            if (timeRemaining <= 0) {
+              state.subscription.trialStatus = 'ended'
+              state.subscription.subscriptionState = 'trial_ended'
+              state.subscription.currentPlan = 'free'
+              state.subscription.showTrialEndModal = true
+            } else if (hoursRemaining <= 3) {
+              state.subscription.trialStatus = 'ending_soon'
+            }
+          })
+        },
+
+        subscribe: async (plan) => {
+          try {
+            // TODO: Implement actual payment API (Stripe/PayPlus)
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+
+            set((state) => {
+              state.subscription.subscriptionState = 'subscribed'
+              state.subscription.currentPlan = plan
+              state.subscription.trialStatus = 'ended'
+              state.subscription.showPricingModal = false
+              state.subscription.showTrialEndModal = false
+            })
+
+            get().showToast('Welcome to PRO!', 'success')
+          } catch (error) {
+            get().showToast('Payment failed. Please try again.', 'error')
+            throw error
+          }
+        },
+
+        cancelSubscription: async () => {
+          try {
+            // TODO: Implement actual API call
+            await new Promise((resolve) => setTimeout(resolve, 500))
+
+            set((state) => {
+              state.subscription.subscriptionState = 'free_limited'
+              state.subscription.currentPlan = 'free'
+            })
+
+            get().showToast('Subscription cancelled', 'info')
+          } catch (error) {
+            get().showToast('Failed to cancel subscription', 'error')
+            throw error
+          }
+        },
+
+        openTrialEndModal: () =>
+          set((state) => {
+            state.subscription.showTrialEndModal = true
+          }),
+
+        closeTrialEndModal: () =>
+          set((state) => {
+            state.subscription.showTrialEndModal = false
+          }),
+
+        openPricingModal: () =>
+          set((state) => {
+            state.subscription.showPricingModal = true
+          }),
+
+        closePricingModal: () =>
+          set((state) => {
+            state.subscription.showPricingModal = false
+          }),
+
+        updateTrialStats: (stats) =>
+          set((state) => {
+            Object.assign(state.subscription.trialStats, stats)
+          }),
+
+        getTrialDaysRemaining: () => {
+          const { trialEndsAt } = get().subscription
+          if (!trialEndsAt) return 0
+          const remaining = trialEndsAt.getTime() - Date.now()
+          return Math.max(0, Math.ceil(remaining / (1000 * 60 * 60 * 24)))
+        },
+
+        getTrialHoursRemaining: () => {
+          const { trialEndsAt } = get().subscription
+          if (!trialEndsAt) return 0
+          const remaining = trialEndsAt.getTime() - Date.now()
+          return Math.max(0, Math.ceil(remaining / (1000 * 60 * 60)))
+        },
       })),
       {
         name: 'connector-storage',
@@ -947,6 +1120,14 @@ export const useConnectorStore = create<ConnectorStore>()(
           ui: {
             language: state.ui.language,
             theme: state.ui.theme,
+          },
+          subscription: {
+            subscriptionState: state.subscription.subscriptionState,
+            currentPlan: state.subscription.currentPlan,
+            trialStatus: state.subscription.trialStatus,
+            trialStartedAt: state.subscription.trialStartedAt,
+            trialEndsAt: state.subscription.trialEndsAt,
+            trialStats: state.subscription.trialStats,
           },
         }),
       }
@@ -965,6 +1146,7 @@ export const useFreeWorld = () => useConnectorStore((state) => state.freeWorld)
 export const useWorker = () => useConnectorStore((state) => state.worker)
 export const useEmployer = () => useConnectorStore((state) => state.employer)
 export const useUI = () => useConnectorStore((state) => state.ui)
+export const useSubscription = () => useConnectorStore((state) => state.subscription)
 
 // Computed selectors
 export const useIsWorkerMode = () =>

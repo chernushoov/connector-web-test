@@ -2,10 +2,26 @@
 
 import { useState, useEffect } from 'react'
 import { ToastProvider } from '@/components/ui/Toast'
+import { TrialEndModal } from '@/components/subscription'
+import { useTrial } from '@/hooks'
 
 // ============================================
 // PROVIDERS COMPONENT
 // ============================================
+
+function TrialManager() {
+  const { checkTrialStatus, isTrialActive } = useTrial()
+
+  // Check trial status periodically
+  useEffect(() => {
+    if (isTrialActive) {
+      const interval = setInterval(checkTrialStatus, 60000) // Every minute
+      return () => clearInterval(interval)
+    }
+  }, [isTrialActive, checkTrialStatus])
+
+  return <TrialEndModal />
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Handle hydration mismatch
@@ -33,6 +49,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       {children}
+      <TrialManager />
     </ToastProvider>
   )
 }
