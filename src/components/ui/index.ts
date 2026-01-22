@@ -77,3 +77,9 @@ export type {
 
 // Toast (will be created separately)
 export { Toast, ToastProvider, useToast } from './Toast'
+
+// Confirmation Modal
+export { ConfirmationModal, useConfirmation } from './ConfirmationModal'
+
+// Success Animation
+export { SuccessAnimation, useSuccessAnimation } from './SuccessAnimation'
