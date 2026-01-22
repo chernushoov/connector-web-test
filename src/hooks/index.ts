@@ -12,3 +12,5 @@ export {
   useShiftStatus,
   useUnreadMessages,
 } from './useStateSync'
+export { useModeration, getModerationMessage } from './useModeration'
+export type { ModerationResult, ModerationState } from './useModeration'

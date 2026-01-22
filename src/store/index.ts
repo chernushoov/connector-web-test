@@ -405,19 +405,66 @@ export const useConnectorStore = create<ConnectorStore>()(
           }),
 
         login: async () => {
+          const { phone, verificationCode } = get().auth
+          if (!phone || !verificationCode) return
+
           set((state) => {
             state.auth.isLoading = true
           })
 
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            const res = await fetch('/api/auth/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone, token: verificationCode }),
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Verification failed')
+            }
+
+            const data = await res.json()
 
             set((state) => {
               state.auth.isAuthenticated = true
               state.auth.isLoading = false
-              state.auth.userId = 'user_' + Math.random().toString(36).substr(2, 9)
+              state.auth.userId = data.user?.id || null
             })
+
+            // Load user profile after login
+            const profileRes = await fetch('/api/users/me')
+            if (profileRes.ok) {
+              const profile = await profileRes.json()
+              set((state) => {
+                if (profile.user_type === 'worker') {
+                  state.user.mode = 'worker'
+                  state.user.workerProfile = profile.worker_profile
+                } else if (profile.user_type === 'employer') {
+                  state.user.mode = 'employer'
+                  state.user.employerProfile = profile.employer_profile
+                }
+                state.user.quickProfile = {
+                  id: profile.id,
+                  name: profile.full_name || '',
+                  avatar: profile.avatar_url || '',
+                  rating: profile.rating || 0,
+                  isVerified: profile.is_verified || false,
+                  skills: profile.skills || [],
+                  availabilityStatus: 'offline',
+                  reviewCount: profile.review_count || 0,
+                  phone: profile.phone || '',
+                  location: profile.location || null,
+                  completedTasks: profile.completed_tasks || 0,
+                  memberSince: profile.created_at || new Date().toISOString(),
+                  responseTime: profile.response_time || 0,
+                  createdAt: profile.created_at || new Date(),
+                  updatedAt: profile.updated_at || new Date(),
+                  language: profile.language || 'ru',
+                  verificationStatus: profile.verification_status || 'unverified',
+                } as QuickProfile
+              })
+            }
           } catch (error) {
             set((state) => {
               state.auth.isLoading = false
@@ -426,14 +473,20 @@ export const useConnectorStore = create<ConnectorStore>()(
           }
         },
 
-        logout: () =>
+        logout: async () => {
+          try {
+            await fetch('/api/auth/logout', { method: 'POST' })
+          } catch {
+            // proceed with local cleanup even if API fails
+          }
           set((state) => {
             state.auth = defaultAuthState
             state.user = defaultUserState
             state.freeWorld = defaultFreeWorldState
             state.worker = defaultWorkerState
             state.employer = defaultEmployerState
-          }),
+          })
+        },
 
         // ========================================
         // USER ACTIONS
@@ -545,12 +598,35 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const location = get().user.currentLocation
+            const params = new URLSearchParams()
+            if (location) {
+              params.set('latitude', String(location.latitude))
+              params.set('longitude', String(location.longitude))
+            }
+            params.set('radius', '10')
 
-            // Mock data will be replaced with actual API
+            const res = await fetch(`/api/shifts/nearby?${params}`)
+            if (!res.ok) throw new Error('Failed to load nearby')
+
+            const data = await res.json()
+
             set((state) => {
-              state.freeWorld.nearbyWorkers = []
+              state.freeWorld.nearbyWorkers = (data.shifts || []).map((s: any) => ({
+                id: s.employer_id,
+                name: s.employer_name || '',
+                avatar: s.employer_avatar || '',
+                rating: 0,
+                isVerified: false,
+                skills: [],
+                availabilityStatus: 'available' as const,
+                reviewCount: 0,
+                phone: '',
+                location: s.location,
+                completedTasks: 0,
+                memberSince: '',
+                responseTime: 0,
+              }))
               state.freeWorld.isLoadingNearby = false
             })
           } catch (error) {
@@ -568,11 +644,37 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const location = get().user.currentLocation
+            const params = new URLSearchParams()
+            if (location) {
+              params.set('latitude', String(location.latitude))
+              params.set('longitude', String(location.longitude))
+            }
+            params.set('radius', '10')
+
+            const res = await fetch(`/api/shifts/nearby?${params}`)
+            if (!res.ok) throw new Error('Failed to load nearby tasks')
+
+            const data = await res.json()
 
             set((state) => {
-              state.freeWorld.nearbyTasks = []
+              state.freeWorld.nearbyTasks = (data.shifts || []).map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                description: s.description,
+                category: s.category,
+                rate: s.hourly_rate,
+                location: s.location,
+                distance: s.distance,
+                urgency: s.urgency || 'normal',
+                postedAt: s.created_at,
+                employer: {
+                  id: s.employer_id,
+                  name: s.employer_name || '',
+                  avatar: s.employer_avatar || '',
+                  rating: 0,
+                },
+              }))
               state.freeWorld.isLoadingNearby = false
             })
           } catch (error) {
@@ -623,11 +725,20 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual API call with filters
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const filters = get().worker.filters
+            const params = new URLSearchParams()
+            params.set('status', 'active')
+            if (filters.search) params.set('search', filters.search)
+            if (filters.minRate) params.set('min_rate', String(filters.minRate))
+            if (filters.maxRate) params.set('max_rate', String(filters.maxRate))
+
+            const res = await fetch(`/api/shifts?${params}`)
+            if (!res.ok) throw new Error('Failed to load shifts')
+
+            const data = await res.json()
 
             set((state) => {
-              state.worker.shifts = []
+              state.worker.shifts = data.shifts || []
               state.worker.isLoadingShifts = false
             })
           } catch (error) {
@@ -641,14 +752,22 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         loadRecommendedShifts: async () => {
           try {
-            // TODO: Implement smart match API
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const location = get().user.currentLocation
+            const params = new URLSearchParams({ status: 'active', limit: '10' })
+            if (location) {
+              params.set('latitude', String(location.latitude))
+              params.set('longitude', String(location.longitude))
+            }
+
+            const res = await fetch(`/api/shifts/nearby?${params}`)
+            if (!res.ok) return
+
+            const data = await res.json()
 
             set((state) => {
-              state.worker.recommendedShifts = []
+              state.worker.recommendedShifts = data.shifts || []
             })
           } catch (error) {
-            // Silent fail for recommendations - not critical
             console.error('Failed to load recommended shifts:', error)
           }
         },
@@ -659,12 +778,20 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch('/api/applications')
+            if (!res.ok) throw new Error('Failed to load tasks')
+
+            const data = await res.json()
 
             set((state) => {
-              state.worker.myTasks = []
+              state.worker.myTasks = data.applications || []
+              state.worker.activeTask = (data.applications || []).find(
+                (t: TaskFlow) => t.status === 'in_progress'
+              ) || null
               state.worker.isLoadingTasks = false
+              state.worker.completedShifts = (data.applications || []).filter(
+                (t: TaskFlow) => t.status === 'completed' || t.status === 'paid'
+              ).length
             })
           } catch (error) {
             console.error('Failed to load tasks:', error)
@@ -677,20 +804,36 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         applyToShift: async (shiftId, message) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch('/api/applications', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ shift_id: shiftId, message }),
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to apply')
+            }
 
             get().showToast('Application sent!', 'success')
+            // Reload tasks to show the new application
+            get().loadMyTasks()
           } catch (error) {
-            get().showToast('Failed to apply', 'error')
+            get().showToast(error instanceof Error ? error.message : 'Failed to apply', 'error')
             throw error
           }
         },
 
         cancelApplication: async (taskFlowId) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch(`/api/applications/${taskFlowId}`, {
+              method: 'DELETE',
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to cancel')
+            }
 
             set((state) => {
               state.worker.myTasks = state.worker.myTasks.filter(
@@ -725,12 +868,22 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch('/api/shifts?my=true')
+            if (!res.ok) throw new Error('Failed to load shifts')
+
+            const data = await res.json()
 
             set((state) => {
-              state.employer.myShifts = []
+              state.employer.myShifts = data.shifts || []
               state.employer.isLoadingShifts = false
+              state.employer.shiftsThisMonth = (data.shifts || []).filter(
+                (s: ShiftPosting) => {
+                  const created = new Date(s.createdAt)
+                  const now = new Date()
+                  return created.getMonth() === now.getMonth() &&
+                         created.getFullYear() === now.getFullYear()
+                }
+              ).length
             })
           } catch (error) {
             console.error('Failed to load shifts:', error)
@@ -743,39 +896,51 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         createShift: async (shift) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch('/api/shifts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(shift),
+            })
 
-            const newShift: ShiftPosting = {
-              ...shift,
-              id: 'shift_' + Math.random().toString(36).substr(2, 9),
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            } as ShiftPosting
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to create shift')
+            }
+
+            const data = await res.json()
 
             set((state) => {
-              state.employer.myShifts.unshift(newShift)
+              state.employer.myShifts.unshift(data.shift)
             })
 
             get().showToast('Shift created!', 'success')
           } catch (error) {
-            get().showToast('Failed to create shift', 'error')
+            get().showToast(error instanceof Error ? error.message : 'Failed to create shift', 'error')
             throw error
           }
         },
 
         updateShift: async (shiftId, updates) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch(`/api/shifts/${shiftId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updates),
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to update shift')
+            }
+
+            const data = await res.json()
 
             set((state) => {
               const index = state.employer.myShifts.findIndex(
                 (s) => s.id === shiftId
               )
               if (index !== -1) {
-                Object.assign(state.employer.myShifts[index], updates)
-                state.employer.myShifts[index].updatedAt = new Date()
+                state.employer.myShifts[index] = data.shift
               }
             })
 
@@ -788,8 +953,14 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         deleteShift: async (shiftId) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch(`/api/shifts/${shiftId}`, {
+              method: 'DELETE',
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to delete shift')
+            }
 
             set((state) => {
               state.employer.myShifts = state.employer.myShifts.filter(
@@ -810,12 +981,23 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch(`/api/applications?shift_id=${shiftId}`)
+            if (!res.ok) throw new Error('Failed to load applications')
+
+            const data = await res.json()
+            const applications: TaskFlow[] = data.applications || []
 
             set((state) => {
-              state.employer.pendingApplications = []
+              state.employer.pendingApplications = applications.filter(
+                (a) => a.status === 'applied'
+              )
+              state.employer.approvedWorkers = applications.filter(
+                (a) => a.status === 'approved' || a.status === 'in_progress'
+              )
               state.employer.isLoadingApplications = false
+              state.employer.activeWorkers = applications.filter(
+                (a) => a.status === 'in_progress'
+              ).length
             })
           } catch (error) {
             console.error('Failed to load applications:', error)
@@ -828,8 +1010,16 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         approveApplication: async (taskFlowId) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch(`/api/applications/${taskFlowId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'approved' }),
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to approve')
+            }
 
             set((state) => {
               const app = state.employer.pendingApplications.find(
@@ -854,8 +1044,16 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         rejectApplication: async (taskFlowId) => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch(`/api/applications/${taskFlowId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'rejected' }),
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to reject')
+            }
 
             set((state) => {
               state.employer.pendingApplications =
@@ -954,11 +1152,26 @@ export const useConnectorStore = create<ConnectorStore>()(
           })
 
           try {
-            // TODO: Implement actual search API
-            await new Promise((resolve) => setTimeout(resolve, 300))
+            const location = get().user.currentLocation
+            const res = await fetch('/api/shifts/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                query,
+                location: location ? {
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  radius: 50,
+                } : undefined,
+              }),
+            })
+
+            if (!res.ok) throw new Error('Search failed')
+
+            const data = await res.json()
 
             set((state) => {
-              state.ui.searchResults = []
+              state.ui.searchResults = data.shifts || []
               state.ui.isSearching = false
             })
           } catch (error) {
@@ -978,20 +1191,42 @@ export const useConnectorStore = create<ConnectorStore>()(
             state.ui.toast.isVisible = false
           }),
 
-        markNotificationRead: (id) =>
+        markNotificationRead: async (id) => {
           set((state) => {
             const notification = state.ui.notifications.find((n) => n.id === id)
             if (notification && !notification.read) {
               notification.read = true
               state.ui.unreadCount = Math.max(0, state.ui.unreadCount - 1)
             }
-          }),
+          })
 
-        markAllNotificationsRead: () =>
+          try {
+            await fetch('/api/notifications', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id }),
+            })
+          } catch {
+            // optimistic update - don't revert on error
+          }
+        },
+
+        markAllNotificationsRead: async () => {
           set((state) => {
             state.ui.notifications.forEach((n) => (n.read = true))
             state.ui.unreadCount = 0
-          }),
+          })
+
+          try {
+            await fetch('/api/notifications', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ markAll: true }),
+            })
+          } catch {
+            // optimistic update - don't revert on error
+          }
+        },
 
         // ========================================
         // SUBSCRIPTION ACTIONS

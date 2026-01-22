@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ToastProvider } from '@/components/ui/Toast'
 import { TrialEndModal } from '@/components/subscription'
 import { useTrial } from '@/hooks'
+import { ChatWidget } from '@/components/support'
 
 // ============================================
 // PROVIDERS COMPONENT
@@ -50,6 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       {children}
       <TrialManager />
+      <ChatWidget />
     </ToastProvider>
   )
 }
