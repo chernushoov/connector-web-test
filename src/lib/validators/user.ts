@@ -7,14 +7,16 @@ import { z } from 'zod'
 const phoneRegex = /^(\+972|0)([23489]|5[0-9]|7[0-9])[0-9]{7}$/
 
 export const phoneSchema = z.string()
-  .regex(phoneRegex, 'Invalid Israeli phone number')
   .transform(val => {
+    // Strip spaces and dashes before validation
+    const cleaned = val.replace(/[\s\-()]/g, '')
     // Normalize to +972 format
-    if (val.startsWith('0')) {
-      return '+972' + val.slice(1)
+    if (cleaned.startsWith('0')) {
+      return '+972' + cleaned.slice(1)
     }
-    return val
+    return cleaned
   })
+  .pipe(z.string().regex(phoneRegex, 'Invalid Israeli phone number'))
 
 // Profile schemas
 export const createProfileSchema = z.object({
