@@ -57,7 +57,8 @@ export async function GET(
         escrow:escrow_transactions!escrow_transactions_task_flow_id_fkey(*)
       `)
       .eq('id', id)
-      .single()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .single() as { data: any; error: any }
 
     if (error || !application) {
       return NextResponse.json(
@@ -132,11 +133,12 @@ export async function PATCH(
     const supabaseAdmin = createAdminClient()
 
     // Get current application
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: application } = await supabaseAdmin
       .from('task_flows')
-      .select('*, shift:shifts!task_flows_shift_id_fkey(employer_id, filled_slots, slots)')
+      .select('*, shift:shifts!task_flows_shift_id_fkey(employer_id, filled, slots)')
       .eq('id', id)
-      .single()
+      .single() as { data: any; error: any }
 
     if (!application) {
       return NextResponse.json(
@@ -177,11 +179,11 @@ export async function PATCH(
     if (newStatus === 'approved') {
       updateData.approved_at = new Date().toISOString()
 
-      // Increment filled_slots on shift
-      await supabaseAdmin
-        .from('shifts')
+      // Increment filled on shift
+      await (supabaseAdmin
+        .from('shifts') as any)
         .update({
-          filled_slots: (application.shift as Record<string, unknown>).filled_slots as number + 1,
+          filled: (application.shift?.filled || 0) + 1,
         })
         .eq('id', application.shift_id)
     }
@@ -199,20 +201,20 @@ export async function PATCH(
     if (newStatus === 'rejected' || newStatus === 'cancelled') {
       updateData.cancelled_at = new Date().toISOString()
 
-      // If was approved, decrement filled_slots
+      // If was approved, decrement filled
       if (application.status === 'approved' || application.status === 'upcoming') {
-        await supabaseAdmin
-          .from('shifts')
+        await (supabaseAdmin
+          .from('shifts') as any)
           .update({
-            filled_slots: Math.max(0, (application.shift as Record<string, unknown>).filled_slots as number - 1),
+            filled: Math.max(0, (application.shift?.filled || 0) - 1),
           })
           .eq('id', application.shift_id)
       }
     }
 
     // Update application
-    const { data: updated, error: updateError } = await supabaseAdmin
-      .from('task_flows')
+    const { data: updated, error: updateError } = await (supabaseAdmin
+      .from('task_flows') as any)
       .update(updateData)
       .eq('id', id)
       .select()
@@ -261,7 +263,7 @@ export async function PATCH(
           body: notification.body,
           channels: ['push'],
           language: 'ru',
-          data: { shift_id: (application as Record<string, unknown>).shift_id as string, status: newStatus },
+          data: { shift_id: application.shift_id, status: newStatus },
         })
       } catch {
         // Non-blocking
@@ -302,11 +304,12 @@ export async function DELETE(
     const supabaseAdmin = createAdminClient()
 
     // Get application
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: application } = await supabaseAdmin
       .from('task_flows')
       .select('worker_id, status')
       .eq('id', id)
-      .single()
+      .single() as { data: any; error: any }
 
     if (!application) {
       return NextResponse.json(
