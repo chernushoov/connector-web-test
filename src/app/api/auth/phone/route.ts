@@ -6,6 +6,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOtpSchema, validate, formatErrors } from '@/lib/validators'
 
+const isDemoMode = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  return !url || url.includes('placeholder')
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -20,6 +25,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone } = validation.data
+
+    // Demo mode - no real SMS, code is 000000
+    if (isDemoMode()) {
+      return NextResponse.json({
+        success: true,
+        message: 'SMS code sent successfully',
+        demo: true,
+        demoCode: '000000',
+      })
+    }
+
     const supabase = createAdminClient()
 
     // Send OTP via Supabase Auth
@@ -41,7 +57,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'SMS code sent successfully',
-      // In development, you might want to return the code for testing
       ...(process.env.NODE_ENV === 'development' && { debug: data }),
     })
   } catch (error) {

@@ -29,8 +29,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // Demo mode check
+  const isDemoMode = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('placeholder')
+  const hasDemoCookie = request.cookies.get('demo-auth')?.value === 'true'
+
   // Refresh session if expired
   const { data: { user } } = await supabase.auth.getUser()
+
+  // In demo mode, treat demo cookie as authenticated
+  const isAuthenticated = !!user || (isDemoMode && hasDemoCookie)
 
   // ============================================
   // ADMIN ROUTES PROTECTION
@@ -71,7 +78,7 @@ export async function middleware(request: NextRequest) {
 
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
 
-    if (!isPublicRoute && !user) {
+    if (!isPublicRoute && !isAuthenticated) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Authentication required' },
         { status: 401 }
@@ -85,7 +92,7 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/worker', '/employer', '/profile', '/notifications']
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
 
-  if (isProtectedRoute && !user) {
+  if (isProtectedRoute && !isAuthenticated) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
@@ -97,7 +104,7 @@ export async function middleware(request: NextRequest) {
   const authRoutes = ['/login', '/register']
   const isAuthRoute = authRoutes.some(route => pathname === route)
 
-  if (isAuthRoute && user) {
+  if (isAuthRoute && isAuthenticated) {
     // Redirect to home if already authenticated
     return NextResponse.redirect(new URL('/', request.url))
   }

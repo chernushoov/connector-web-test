@@ -7,6 +7,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyOtpSchema, validate, formatErrors } from '@/lib/validators'
 
+const isDemoMode = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  return !url || url.includes('placeholder')
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -21,6 +26,51 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, code } = validation.data
+
+    // Demo mode - accept code 000000
+    if (isDemoMode()) {
+      if (code !== '000000') {
+        return NextResponse.json(
+          { error: 'Invalid code', message: 'В демо-режиме код: 000000' },
+          { status: 400 }
+        )
+      }
+
+      const demoUserId = 'demo-user-' + phone.replace(/\D/g, '')
+
+      const response = NextResponse.json({
+        success: true,
+        user: {
+          id: demoUserId,
+          phone,
+          email: null,
+        },
+        session: {
+          access_token: 'demo-token-' + Date.now(),
+          refresh_token: 'demo-refresh-' + Date.now(),
+          expires_in: 86400,
+          token_type: 'bearer',
+        },
+        isNewUser: true,
+        profile: {
+          id: demoUserId,
+          full_name: 'Demo Worker',
+          user_type: 'worker',
+          is_verified: true,
+        },
+        demo: true,
+      })
+
+      // Set demo cookie for middleware auth check
+      response.cookies.set('demo-auth', 'true', {
+        path: '/',
+        maxAge: 86400,
+        httpOnly: false,
+      })
+
+      return response
+    }
+
     const supabase = await createClient()
 
     // Verify OTP
@@ -62,7 +112,7 @@ export async function POST(request: NextRequest) {
         .insert({
           id: data.user.id,
           phone: data.user.phone || phone,
-          user_type: 'worker', // Default to worker, can be changed later
+          user_type: 'worker',
         })
     }
 

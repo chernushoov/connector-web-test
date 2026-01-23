@@ -416,7 +416,7 @@ export const useConnectorStore = create<ConnectorStore>()(
             const res = await fetch('/api/auth/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone, token: verificationCode }),
+              body: JSON.stringify({ phone, code: verificationCode }),
             })
 
             if (!res.ok) {

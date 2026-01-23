@@ -8,11 +8,41 @@ import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { updateWorkerProfileSchema, updateEmployerProfileSchema, validate, formatErrors } from '@/lib/validators'
 
+const isDemoMode = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  return !url || url.includes('placeholder')
+}
+
 /**
  * GET - Get current user with full profile
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Demo mode - return mock profile
+    if (isDemoMode()) {
+      const demoCookie = request.cookies.get('demo-auth')?.value
+      if (demoCookie === 'true') {
+        return NextResponse.json({
+          id: 'demo-user',
+          full_name: 'Demo Worker',
+          user_type: 'worker',
+          is_verified: true,
+          phone: '+972500000000',
+          language: 'ru',
+          rating: 4.8,
+          review_count: 12,
+          completed_tasks: 25,
+          skills: ['cleaning', 'delivery'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          worker_profile: {
+            skills: ['cleaning', 'delivery'],
+            experience_years: 2,
+          },
+        })
+      }
+    }
+
     const user = await getUser()
 
     if (!user) {
