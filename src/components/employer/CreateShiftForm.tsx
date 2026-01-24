@@ -207,13 +207,65 @@ export function CreateShiftForm({
 
   const calculateTotalEstimate = () => {
     if (!baseRate || !startTime || !endTime) return 0
-    const start = parseInt(startTime.split(':')[0])
-    const end = parseInt(endTime.split(':')[0])
-    const hours = end - start
-    return parseInt(baseRate) * hours * parseInt(slots)
+    const [startH, startM] = startTime.split(':').map(Number)
+    const [endH, endM] = endTime.split(':').map(Number)
+    let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM)
+    // Handle overnight shifts (e.g. 22:00 - 06:00)
+    if (totalMinutes <= 0) totalMinutes += 24 * 60
+    const hours = totalMinutes / 60
+    return Math.round(parseFloat(baseRate) * hours * parseInt(slots))
+  }
+
+  // Validation errors
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validateStep = (currentStep: number): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (currentStep === 1) {
+      if (!title.trim()) newErrors.title = 'Required'
+      else if (title.trim().length < 3) newErrors.title = 'Min 3 characters'
+      else if (title.trim().length > 100) newErrors.title = 'Max 100 characters'
+    }
+
+    if (currentStep === 2) {
+      if (!date) {
+        newErrors.date = 'Required'
+      } else {
+        const selectedDate = new Date(date)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        if (selectedDate < today) newErrors.date = 'Must be today or later'
+      }
+      if (!startTime) newErrors.startTime = 'Required'
+      if (!endTime) newErrors.endTime = 'Required'
+      if (!city.trim()) newErrors.city = 'Required'
+    }
+
+    if (currentStep === 3) {
+      const rate = parseFloat(baseRate)
+      if (!baseRate || isNaN(rate)) newErrors.baseRate = 'Required'
+      else if (rate < 30) newErrors.baseRate = 'Min ₪30/h'
+      else if (rate > 500) newErrors.baseRate = 'Max ₪500/h'
+
+      const slotsNum = parseInt(slots)
+      if (!slots || isNaN(slotsNum)) newErrors.slots = 'Required'
+      else if (slotsNum < 1) newErrors.slots = 'Min 1'
+      else if (slotsNum > 20) newErrors.slots = 'Max 20'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const goToNextStep = () => {
+    if (validateStep(step)) {
+      setStep(step + 1)
+    }
   }
 
   const handleSubmit = async () => {
+    if (!validateStep(3)) return
     setIsLoading(true)
 
     try {
@@ -232,8 +284,6 @@ export function CreateShiftForm({
         applicants: 0,
         city,
         location: {
-          latitude: 32.0853,
-          longitude: 34.7818,
           address,
           city,
         },
@@ -285,12 +335,15 @@ export function CreateShiftForm({
           >
             <h2 className="text-xl font-bold text-neutral-900">{t.step1Title}</h2>
 
-            <Input
-              label={t.titleLabel}
-              placeholder={t.titlePlaceholder}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            <div>
+              <Input
+                label={t.titleLabel}
+                placeholder={t.titlePlaceholder}
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); setErrors((prev) => ({ ...prev, title: '' })) }}
+              />
+              {errors.title && <p className="text-xs text-danger mt-1">{errors.title}</p>}
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
@@ -369,33 +422,45 @@ export function CreateShiftForm({
               </div>
             </div>
 
-            <Input
-              type="date"
-              label={t.dateLabel}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-
-            <div className="grid grid-cols-2 gap-3">
+            <div>
               <Input
-                type="time"
-                label={t.startTimeLabel}
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                type="date"
+                label={t.dateLabel}
+                value={date}
+                onChange={(e) => { setDate(e.target.value); setErrors((prev) => ({ ...prev, date: '' })) }}
               />
-              <Input
-                type="time"
-                label={t.endTimeLabel}
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
+              {errors.date && <p className="text-xs text-danger mt-1">{errors.date}</p>}
             </div>
 
-            <Input
-              label={t.cityLabel}
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  type="time"
+                  label={t.startTimeLabel}
+                  value={startTime}
+                  onChange={(e) => { setStartTime(e.target.value); setErrors((prev) => ({ ...prev, startTime: '' })) }}
+                />
+                {errors.startTime && <p className="text-xs text-danger mt-1">{errors.startTime}</p>}
+              </div>
+              <div>
+                <Input
+                  type="time"
+                  label={t.endTimeLabel}
+                  value={endTime}
+                  onChange={(e) => { setEndTime(e.target.value); setErrors((prev) => ({ ...prev, endTime: '' })) }}
+                />
+                {errors.endTime && <p className="text-xs text-danger mt-1">{errors.endTime}</p>}
+              </div>
+            </div>
+
+            <div>
+              <Input
+                label={t.cityLabel}
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setErrors((prev) => ({ ...prev, city: '' })) }}
+              />
+              {errors.city && <p className="text-xs text-danger mt-1">{errors.city}</p>}
+            </div>
 
             <Input
               label={t.addressLabel}
@@ -416,22 +481,28 @@ export function CreateShiftForm({
           >
             <h2 className="text-xl font-bold text-neutral-900">{t.step3Title}</h2>
 
-            <Input
-              type="number"
-              label={t.rateLabel}
-              value={baseRate}
-              onChange={(e) => setBaseRate(e.target.value)}
-              leftIcon={<span className="text-neutral-400">₪</span>}
-            />
+            <div>
+              <Input
+                type="number"
+                label={t.rateLabel}
+                value={baseRate}
+                onChange={(e) => { setBaseRate(e.target.value); setErrors((prev) => ({ ...prev, baseRate: '' })) }}
+                leftIcon={<span className="text-neutral-400">₪</span>}
+              />
+              {errors.baseRate && <p className="text-xs text-danger mt-1">{errors.baseRate}</p>}
+            </div>
 
-            <Input
-              type="number"
-              label={t.slotsLabel}
-              value={slots}
-              onChange={(e) => setSlots(e.target.value)}
-              min="1"
-              max="10"
-            />
+            <div>
+              <Input
+                type="number"
+                label={t.slotsLabel}
+                value={slots}
+                onChange={(e) => { setSlots(e.target.value); setErrors((prev) => ({ ...prev, slots: '' })) }}
+                min="1"
+                max="20"
+              />
+              {errors.slots && <p className="text-xs text-danger mt-1">{errors.slots}</p>}
+            </div>
 
             {/* Toggle options */}
             <div className="space-y-3">
@@ -554,12 +625,7 @@ export function CreateShiftForm({
         {step < 4 ? (
           <Button
             variant="primary"
-            onClick={() => setStep(step + 1)}
-            disabled={
-              (step === 1 && !title) ||
-              (step === 2 && (!date || !startTime || !endTime || !city)) ||
-              (step === 3 && !baseRate)
-            }
+            onClick={goToNextStep}
           >
             {t.next}
           </Button>

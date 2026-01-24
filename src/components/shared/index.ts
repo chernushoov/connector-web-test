@@ -9,6 +9,7 @@ export {
 } from './EmptyStates'
 export { LoadingState, SkeletonCard, SkeletonLine, SkeletonAvatar } from './LoadingState'
 export { ErrorState } from './ErrorState'
+export { ErrorBoundary } from './ErrorBoundary'
 export { LanguageSwitcher } from './LanguageSwitcher'
 export { FilterSheet } from './FilterSheet'
 export { InfiniteList, VirtualList } from './InfiniteList'

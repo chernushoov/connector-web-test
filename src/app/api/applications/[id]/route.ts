@@ -375,16 +375,16 @@ function getStatusTransitions(currentStatus: string, isEmployer: boolean): strin
       worker: ['cancelled'],
     },
     approved: {
-      employer: ['cancelled'],
-      worker: ['upcoming', 'cancelled'],
+      employer: ['upcoming', 'cancelled'],
+      worker: ['cancelled'],
     },
     upcoming: {
-      employer: ['cancelled'],
-      worker: ['in_progress', 'cancelled'],
+      employer: ['in_progress', 'cancelled'],
+      worker: ['cancelled'],
     },
     in_progress: {
       employer: ['completed'],
-      worker: ['completed'],
+      worker: ['disputed'],
     },
     completed: {
       employer: ['awaiting_review', 'disputed'],

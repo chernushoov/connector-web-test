@@ -29,15 +29,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Demo mode check
-  const isDemoMode = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('placeholder')
-  const hasDemoCookie = request.cookies.get('demo-auth')?.value === 'true'
-
   // Refresh session if expired
   const { data: { user } } = await supabase.auth.getUser()
 
-  // In demo mode, treat demo cookie as authenticated
-  const isAuthenticated = !!user || (isDemoMode && hasDemoCookie)
+  const isAuthenticated = !!user
 
   // ============================================
   // ADMIN ROUTES PROTECTION

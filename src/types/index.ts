@@ -63,7 +63,9 @@ export interface Coordinates {
   longitude: number
 }
 
-export interface Location extends Coordinates {
+export interface Location {
+  latitude?: number
+  longitude?: number
   address?: string
   city?: string
   distance?: number // km from user

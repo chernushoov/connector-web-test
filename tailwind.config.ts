@@ -50,6 +50,7 @@ const config: Config = {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'SF Mono', 'Fira Code', 'monospace'],
       },
       fontSize: {
         'display-lg': ['3rem', { lineHeight: '1.1', fontWeight: '800' }],
@@ -81,6 +82,8 @@ const config: Config = {
         'glow-accent': '0 0 20px rgba(245, 189, 66, 0.4)',
         'glow-success': '0 0 20px rgba(52, 199, 89, 0.4)',
         'glow-danger': '0 0 20px rgba(255, 59, 48, 0.4)',
+        'system-card': '0 0 24px -8px rgba(34, 211, 238, 0.15), inset 0 1px 0 rgba(255,255,255,0.04)',
+        'system-glow': '0 0 32px -4px var(--system-glow-color, rgba(34, 211, 238, 0.3))',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

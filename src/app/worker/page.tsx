@@ -40,10 +40,9 @@ export default function WorkerDashboard() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      // For now, allow access. In production, redirect to login.
-      // window.location.href = '/login'
+      router.push('/login?redirect=/worker')
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, router])
 
   const handleShiftClick = (shift: ShiftPosting) => {
     setSelectedShift(shift)

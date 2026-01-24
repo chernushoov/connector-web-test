@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET || 'connector-admin-2024'
+const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET
+
+if (!ADMIN_SECRET) {
+  console.error('[FATAL] ADMIN_JWT_SECRET environment variable is not set')
+}
 
 interface AdminPayload {
   id: string
@@ -13,6 +17,9 @@ interface AdminPayload {
 }
 
 function hmacSign(data: string): string {
+  if (!ADMIN_SECRET) {
+    throw new Error('ADMIN_JWT_SECRET is not configured')
+  }
   return createHmac('sha256', ADMIN_SECRET).update(data).digest('base64url')
 }
 

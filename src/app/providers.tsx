@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ToastProvider } from '@/components/ui/Toast'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 import { TrialEndModal } from '@/components/subscription'
 import { useTrial } from '@/hooks'
 import { ChatWidget } from '@/components/support'
@@ -50,10 +51,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ToastProvider>
-      {children}
-      <TrialManager />
-      <ChatWidget />
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        {children}
+        <TrialManager />
+        <ChatWidget />
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }
