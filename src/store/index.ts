@@ -1267,18 +1267,40 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         subscribe: async (plan) => {
           try {
-            // TODO: Implement actual payment API (Stripe/PayPlus)
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-
-            set((state) => {
-              state.subscription.subscriptionState = 'subscribed'
-              state.subscription.currentPlan = plan
-              state.subscription.trialStatus = 'ended'
-              state.subscription.showPricingModal = false
-              state.subscription.showTrialEndModal = false
+            const res = await fetch('/api/subscriptions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ plan, billing_period: 'monthly' }),
             })
 
-            get().showToast('Welcome to PRO!', 'success')
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to create checkout session')
+            }
+
+            const data = await res.json()
+
+            // Demo mode: update state directly
+            if (data.demo) {
+              set((state) => {
+                state.subscription.subscriptionState = 'subscribed'
+                state.subscription.currentPlan = plan
+                state.subscription.trialStatus = 'ended'
+                state.subscription.showPricingModal = false
+                state.subscription.showTrialEndModal = false
+              })
+              get().showToast(`Welcome to ${plan.toUpperCase()}!`, 'success')
+              return
+            }
+
+            // Redirect to Stripe Checkout
+            if (data.url) {
+              set((state) => {
+                state.subscription.showPricingModal = false
+                state.subscription.showTrialEndModal = false
+              })
+              window.location.href = data.url
+            }
           } catch (error) {
             get().showToast('Payment failed. Please try again.', 'error')
             throw error
@@ -1287,15 +1309,29 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         cancelSubscription: async () => {
           try {
-            // TODO: Implement actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            const res = await fetch('/api/subscriptions', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+            })
+
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.error || 'Failed to cancel subscription')
+            }
+
+            const data = await res.json()
 
             set((state) => {
               state.subscription.subscriptionState = 'free_limited'
               state.subscription.currentPlan = 'free'
             })
 
-            get().showToast('Subscription cancelled', 'info')
+            get().showToast(
+              data.demo
+                ? 'Subscription cancelled (demo)'
+                : 'Subscription will be cancelled at the end of the billing period',
+              'info'
+            )
           } catch (error) {
             get().showToast('Failed to cancel subscription', 'error')
             throw error
