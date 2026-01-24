@@ -38,8 +38,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-white">
         <div className="flex items-center justify-center h-screen">
           <div className="flex flex-col items-center gap-4">
-            {/* Brand logo placeholder */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-brand animate-pulse" />
+            {/* Brand logo */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-brand flex items-center justify-center animate-pulse">
+              <span className="text-white font-bold text-3xl">C</span>
+            </div>
             <div className="w-24 h-4 bg-neutral-200 rounded animate-pulse" />
           </div>
         </div>

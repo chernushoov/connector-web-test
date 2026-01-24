@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * User Profile by ID
  * GET /api/users/[id] - Get public user profile

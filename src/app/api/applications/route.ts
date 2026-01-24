@@ -98,8 +98,8 @@ export async function GET(request: NextRequest) {
     // Note: Date filtering on joined table requires post-processing
 
     // Pagination
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
+    const page = Math.max(parseInt(searchParams.get('page') || '1') || 1, 1)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20') || 20, 1), 100)
     const offset = (page - 1) * limit
 
     query = query

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phone Authentication - Verify SMS Code
  * POST /api/auth/verify

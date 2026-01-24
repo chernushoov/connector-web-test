@@ -63,7 +63,17 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // TODO: Validate admin JWT token
+    // Validate admin token signature and expiry
+    const { verifyAdminToken } = await import('@/lib/admin-auth')
+    const adminPayload = verifyAdminToken(adminToken)
+    if (!adminPayload) {
+      // Invalid/expired token - clear cookie and redirect to login
+      const loginUrl = new URL('/admin/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete('admin-token')
+      return response
+    }
   }
 
   // ============================================

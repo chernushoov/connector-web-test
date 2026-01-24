@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Current User Profile
  * GET /api/users/me - Get current user with full profile

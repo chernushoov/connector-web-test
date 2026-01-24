@@ -141,7 +141,7 @@ export function TrialEndModal({ className }: TrialEndModalProps) {
                   <p className="text-sm text-neutral-600">Full access</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-blue-600">₪29</p>
+                  <p className="text-2xl font-bold text-blue-600">₪49</p>
                   <p className="text-xs text-neutral-500">/month</p>
                 </div>
               </div>

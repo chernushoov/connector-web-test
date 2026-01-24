@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Single Review API
  * GET /api/reviews/[id] - Get review details

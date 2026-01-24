@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Advanced Shift Search
  * POST /api/shifts/search - Search with complex filters

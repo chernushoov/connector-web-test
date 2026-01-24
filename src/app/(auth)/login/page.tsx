@@ -9,7 +9,7 @@ import { t } from '@/i18n/translations'
 import { PhoneInput, CodeInput, SocialButtons } from '@/components/auth'
 import { Button } from '@/components/ui/Button'
 import { Header } from '@/components/shared'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 type AuthStep = 'phone' | 'code'
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
           className="text-center mb-8"
         >
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-brand mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
+            <span className="text-white font-bold text-3xl">C</span>
           </div>
           <h1 className="text-2xl font-bold text-neutral-900 mb-2">
             {t('auth.title', language)}

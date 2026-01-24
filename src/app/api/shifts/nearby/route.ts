@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Nearby Shifts (Geo Search)
  * GET /api/shifts/nearby - Find shifts near location

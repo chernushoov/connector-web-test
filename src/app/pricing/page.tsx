@@ -41,7 +41,7 @@ const pricingPlans: PricingPlan[] = [
   {
     id: 'pro',
     name: 'PRO',
-    price: 29,
+    price: 49,
     period: 'month',
     features: [
       'Unlimited applications',
@@ -57,7 +57,7 @@ const pricingPlans: PricingPlan[] = [
   {
     id: 'business',
     name: 'Business',
-    price: 99,
+    price: 149,
     period: 'month',
     features: [
       'Everything in PRO',
@@ -68,7 +68,7 @@ const pricingPlans: PricingPlan[] = [
       'API access',
       'Dedicated account manager',
     ],
-    savings: 168,
+    savings: 298,
   },
 ]
 

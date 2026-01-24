@@ -33,11 +33,11 @@ export const CURRENCY = 'ils'
 // Subscription prices in ILS (agorot)
 export const SUBSCRIPTION_PRICES = {
   pro: {
-    monthly: 9900, // 99 ILS
-    yearly: 89900, // 899 ILS
+    monthly: 4900, // 49 ILS
+    yearly: 47000, // 470 ILS (~2 months free)
   },
   business: {
-    monthly: 29900, // 299 ILS
-    yearly: 269900, // 2699 ILS
+    monthly: 14900, // 149 ILS
+    yearly: 149000, // 1490 ILS (~2 months free)
   },
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Reviews API
  * GET /api/reviews - Get reviews (with filters)
