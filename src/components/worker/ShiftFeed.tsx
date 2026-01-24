@@ -37,9 +37,10 @@ export function ShiftFeed({ onShiftClick, className }: ShiftFeedProps) {
 
   const [displayShifts, setDisplayShifts] = useState<ShiftPosting[]>(mockShifts)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadShifts()
-  }, [loadShifts])
+  }, [])
 
   // Use mock data if no shifts from store
   useEffect(() => {
