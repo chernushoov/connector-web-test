@@ -15,3 +15,7 @@ export { ShiftManagement } from './ShiftManagement'
 
 // Quick Hire
 export { QuickHireButton } from './QuickHireButton'
+
+// Escrow
+export { EscrowBalance } from './EscrowBalance'
+export type { EscrowBalanceProps } from './EscrowBalance'

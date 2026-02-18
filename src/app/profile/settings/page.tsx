@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { useUI, useConnectorStore } from '@/store'
+import { useUI, useUser, useConnectorStore } from '@/store'
 import { t, languages } from '@/i18n/translations'
 import { Header, Navigation } from '@/components/shared'
 import { LanguageSwitcher } from '@/components/shared'
@@ -17,13 +18,16 @@ import {
   Shield,
   Trash2,
   ChevronRight,
-  Check
+  Check,
+  User as UserIcon,
 } from 'lucide-react'
-import type { Language } from '@/types'
+import type { Language, UserMode } from '@/types'
 
 export default function SettingsPage() {
+  const router = useRouter()
   const { language, isRTL, theme } = useUI()
-  const { setLanguage, toggleTheme } = useConnectorStore()
+  const { mode } = useUser()
+  const { setLanguage, toggleTheme, setMode } = useConnectorStore()
 
   const [notifications, setNotifications] = useState({
     shifts: true,
@@ -63,7 +67,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <span className="text-2xl">{lang.flag}</span>
-                  <div className="flex-1 text-start">
+                  <div className="flex-1 text-left">
                     <p className="font-medium">{lang.nativeName}</p>
                     <p className="text-sm text-neutral-500">{lang.name}</p>
                   </div>
@@ -108,6 +112,25 @@ export default function SettingsPage() {
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               />
             </button>
+          </Card>
+        </section>
+
+        {/* Account Mode */}
+        <section>
+          <h3 className="text-sm font-medium text-neutral-500 px-1 mb-3">
+            Account Mode
+          </h3>
+          <Card className="space-y-0 divide-y divide-neutral-100">
+            <ModeOption
+              icon={<UserIcon className="w-5 h-5" />}
+              label="Free User"
+              description="Create and complete quick tasks"
+              selected={mode === 'free'}
+              onClick={() => {
+                setMode('free')
+                router.push('/free')
+              }}
+            />
           </Card>
         </section>
 
@@ -247,8 +270,41 @@ function MenuItem({
       className="w-full flex items-center gap-3 p-3 hover:bg-neutral-50 transition-colors"
     >
       <span className="text-neutral-400">{icon}</span>
-      <span className="flex-1 text-start font-medium">{label}</span>
+      <span className="flex-1 text-left font-medium">{label}</span>
       <ChevronRight className="w-5 h-5 text-neutral-400" />
+    </button>
+  )
+}
+
+function ModeOption({
+  icon,
+  label,
+  description,
+  selected,
+  onClick
+}: {
+  icon: React.ReactNode
+  label: string
+  description: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-3 p-3 transition-colors',
+        selected ? 'bg-brand-primary/10' : 'hover:bg-neutral-50'
+      )}
+    >
+      <span className={selected ? 'text-brand-primary' : 'text-neutral-400'}>
+        {icon}
+      </span>
+      <div className="flex-1 text-left">
+        <p className="font-medium">{label}</p>
+        <p className="text-sm text-neutral-500">{description}</p>
+      </div>
+      {selected && <Check className="w-5 h-5 text-brand-primary" />}
     </button>
   )
 }

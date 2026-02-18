@@ -1,442 +1,655 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { useUI, useEmployer, useConnectorStore } from '@/store'
+import { useUI } from '@/store'
 import { t } from '@/i18n/translations'
-import { Header, LoadingState, ErrorState } from '@/components/shared'
-import { ApplicantList, ShiftManagement } from '@/components/employer'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import {
-  MapPin,
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  CalendarDays,
   Clock,
-  Calendar,
-  Users,
+  MapPin,
   DollarSign,
-  Edit2,
-  Share2,
-  Eye,
-  TrendingUp
+  Users,
+  Star,
+  Car,
+  Wrench,
+  Zap,
+  Edit3,
+  Save,
+  X,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  Lock,
+  Unlock,
+  AlertCircle,
+  Loader2,
+  User,
 } from 'lucide-react'
-import type { ShiftPosting, TaskFlow, WorkerProfile } from '@/types'
 
-// Mock data
-const mockShift: ShiftPosting = {
-  id: '1',
-  title: 'Warehouse Helper',
-  description: 'Loading and unloading goods, organizing inventory. Must be able to lift heavy packages.',
-  employer: {
-    id: 'emp1',
-    name: 'Me',
-    company: 'My Company',
-    phone: '+972501234567',
-    rating: 4.8,
-    reviewCount: 156,
-    totalPaid: 125000,
-    isVerified: true,
-  },
-  location: { latitude: 32.0853, longitude: 34.7818, address: 'Tel Aviv Port, Warehouse 7', distance: 2.3 },
-  city: 'Tel Aviv',
-  date: new Date(),
-  startTime: '08:00',
-  endTime: '16:00',
-  urgency: 'instant',
-  baseRate: 55,
-  surgeMultiplier: 1.0,
-  totalEstimate: 440,
-  paymentGuarantee: true,
-  slots: 5,
-  filled: 3,
-  applicants: 8,
-  requirements: { needsCar: false, needsTools: false, needsTeam: 0, minExperience: 0, minRating: 3.5 },
-  requiredSkills: ['warehouse', 'lifting'],
-  status: 'open',
-  isInstant: true,
-  acceptsTeams: false,
-  hasEscrow: true,
-  hasInsurance: true,
-  workplaceRating: 4.5,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  viewCount: 45,
+// ── Inline types ─────────────────────────────────────────────
+interface ShiftDetail {
+  id: string
+  title: string
+  description?: string
+  cityCode: string
+  specialization?: string
+  date: string
+  startTime: string
+  endTime: string
+  baseRate: number
+  slots: number
+  filled: number
+  status: string
+  urgency: string
+  lat: number
+  lng: number
+  requirements: {
+    needsCar: boolean
+    needsTools: boolean
+    teamSize: number
+    minRating: number
+  }
+  applicantCount: number
+  createdAt: string
 }
 
-const mockApplications: TaskFlow[] = [
-  {
-    id: 'app1',
-    shiftId: '1',
-    shift: mockShift,
-    workerId: 'worker1',
-    worker: {
-      id: 'worker1',
-      phone: '+972501111111',
-      name: 'David Cohen',
-      photoUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      language: 'he',
-      isVerified: true,
-      verificationStatus: 'verified',
-      skills: ['warehouse', 'lifting'],
-      availabilityStatus: 'available',
-      rating: 4.9,
-      reviewCount: 45,
-      hourlyRate: 55,
-      city: 'Tel Aviv',
-      specialization: 'Warehouse',
-      experience: 3,
-      hasCar: true,
-      hasTools: false,
-      teamSize: 0,
-      availability: 'now',
-      minRate: 45,
-      maxRate: 70,
-      documents: [],
-      portfolio: [],
-      completedShifts: 67,
-      totalEarned: 28500,
-      totalHours: 520,
-      reliabilityScore: 95,
-      responseTime: 5,
-      onTimeRate: 0.98,
-      languages: ['Hebrew', 'English', 'Russian'],
-      isPro: true,
-    },
-    status: 'applied',
-    appliedAt: new Date(Date.now() - 3600000),
-    agreedRate: 55,
-    paymentStatus: 'pending',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'app2',
-    shiftId: '1',
-    shift: mockShift,
-    workerId: 'worker2',
-    worker: {
-      id: 'worker2',
-      phone: '+972502222222',
-      name: 'Alex Ivanov',
-      photoUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      language: 'ru',
-      isVerified: true,
-      verificationStatus: 'verified',
-      skills: ['warehouse', 'moving'],
-      availabilityStatus: 'available',
-      rating: 4.7,
-      reviewCount: 28,
-      hourlyRate: 50,
-      city: 'Ramat Gan',
-      specialization: 'Moving',
-      experience: 2,
-      hasCar: false,
-      hasTools: true,
-      teamSize: 2,
-      availability: 'today',
-      minRate: 40,
-      maxRate: 60,
-      documents: [],
-      portfolio: [],
-      completedShifts: 34,
-      totalEarned: 14200,
-      totalHours: 280,
-      reliabilityScore: 88,
-      responseTime: 10,
-      onTimeRate: 0.94,
-      languages: ['Russian', 'Hebrew'],
-      isPro: false,
-    },
-    status: 'applied',
-    appliedAt: new Date(Date.now() - 7200000),
-    agreedRate: 55,
-    paymentStatus: 'pending',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'app3',
-    shiftId: '1',
-    shift: mockShift,
-    workerId: 'worker3',
-    worker: {
-      id: 'worker3',
-      phone: '+972503333333',
-      name: 'Mohammad Hassan',
-      photoUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      language: 'ar',
-      isVerified: false,
-      verificationStatus: 'pending',
-      skills: ['warehouse'],
-      availabilityStatus: 'available',
-      rating: 4.5,
-      reviewCount: 12,
-      hourlyRate: 45,
-      city: 'Jaffa',
-      specialization: 'General',
-      experience: 1,
-      hasCar: false,
-      hasTools: false,
-      teamSize: 0,
-      availability: 'flexible',
-      minRate: 40,
-      maxRate: 55,
-      documents: [],
-      portfolio: [],
-      completedShifts: 15,
-      totalEarned: 6300,
-      totalHours: 140,
-      reliabilityScore: 82,
-      responseTime: 15,
-      onTimeRate: 0.90,
-      languages: ['Arabic', 'Hebrew'],
-      isPro: false,
-    },
-    status: 'approved',
-    appliedAt: new Date(Date.now() - 86400000),
-    approvedAt: new Date(Date.now() - 43200000),
-    agreedRate: 55,
-    paymentStatus: 'pending',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
+interface ShiftApplication {
+  id: string
+  workerId: string
+  workerName: string
+  workerPhotoUrl?: string
+  workerRating: number
+  workerSpecialization: string
+  status: string
+  appliedAt: string
+}
 
-export default function ShiftManagePage() {
-  const params = useParams()
+// ── Status colors ────────────────────────────────────────────
+const statusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'open':
+      return 'bg-emerald-100 text-emerald-700'
+    case 'matched':
+    case 'in_progress':
+      return 'bg-blue-100 text-blue-700'
+    case 'completed':
+      return 'bg-neutral-100 text-neutral-600'
+    case 'cancelled':
+      return 'bg-red-100 text-red-600'
+    default:
+      return 'bg-neutral-100 text-neutral-600'
+  }
+}
+
+const appStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'pending':
+      return 'bg-amber-100 text-amber-700'
+    case 'approved':
+      return 'bg-emerald-100 text-emerald-700'
+    case 'rejected':
+      return 'bg-red-100 text-red-600'
+    default:
+      return 'bg-neutral-100 text-neutral-600'
+  }
+}
+
+// ── Main component ───────────────────────────────────────────
+export default function EmployerShiftDetailPage() {
   const router = useRouter()
+  const params = useParams()
   const shiftId = params.id as string
-
   const { language, isRTL } = useUI()
-  const { pendingApplications, isLoadingApplications } = useEmployer()
-  const { loadApplications, approveApplication, rejectApplication, showToast } = useConnectorStore()
 
-  const [shift, setShift] = useState<ShiftPosting | null>(null)
-  const [applications, setApplications] = useState<TaskFlow[]>(mockApplications)
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'details' | 'applicants'>('applicants')
+  const [shift, setShift] = useState<ShiftDetail | null>(null)
+  const [applications, setApplications] = useState<ShiftApplication[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  // Edit mode
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    baseRate: 0,
+    slots: 0,
+  })
+
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const BackIcon = isRTL ? ArrowRight : ArrowLeft
+
+  // ── Fetch shift ────────────────────────────────────────
+  const fetchShift = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [shiftRes, appsRes] = await Promise.all([
+        fetch(`/api/shifts/${shiftId}`),
+        fetch(`/api/employer/applications?shiftId=${shiftId}`),
+      ])
+
+      if (!shiftRes.ok) throw new Error('Failed to fetch shift')
+
+      const shiftData = await shiftRes.json()
+      const appsData = appsRes.ok ? await appsRes.json() : { applications: [] }
+
+      const shiftInfo = shiftData.shift || shiftData
+      setShift(shiftInfo)
+      setApplications(appsData.applications || [])
+      setEditForm({
+        title: shiftInfo.title || '',
+        description: shiftInfo.description || '',
+        baseRate: shiftInfo.baseRate || 0,
+        slots: shiftInfo.slots || 0,
+      })
+    } catch {
+      setError('Failed to load shift details')
+    } finally {
+      setLoading(false)
+    }
+  }, [shiftId])
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true)
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      setShift({ ...mockShift, id: shiftId })
-      await loadApplications(shiftId)
-      setIsLoading(false)
-    }
-    loadData()
-  }, [shiftId, loadApplications])
+    if (shiftId) fetchShift()
+  }, [shiftId, fetchShift])
 
-  const handleApprove = async (applicationId: string) => {
+  // ── Actions ────────────────────────────────────────────
+  const handleSaveEdit = async () => {
+    if (!shift) return
+    setActionLoading(true)
     try {
-      await approveApplication(applicationId)
-      setApplications(prev => prev.map(a =>
-        a.id === applicationId ? { ...a, status: 'approved' as const } : a
-      ))
-    } catch (error) {
-      showToast('Failed to approve', 'error')
+      const res = await fetch(`/api/shifts/${shift.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      })
+      if (!res.ok) throw new Error('Failed to update')
+      setIsEditing(false)
+      await fetchShift()
+    } catch {
+      setError('Failed to update shift')
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const handleReject = async (applicationId: string) => {
+  const handleToggleStatus = async () => {
+    if (!shift) return
+    const newStatus = shift.status === 'open' ? 'cancelled' : 'open'
+    setActionLoading(true)
     try {
-      await rejectApplication(applicationId)
-      setApplications(prev => prev.filter(a => a.id !== applicationId))
-    } catch (error) {
-      showToast('Failed to reject', 'error')
+      const res = await fetch(`/api/shifts/${shift.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      await fetchShift()
+    } catch {
+      setError('Failed to update status')
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  if (isLoading) {
+  const handleDelete = async () => {
+    if (!shift) return
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/shifts/${shift.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed')
+      router.push('/employer')
+    } catch {
+      setError('Failed to delete shift')
+      setShowDeleteConfirm(false)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleApplicationAction = async (
+    appId: string,
+    action: 'approve' | 'reject'
+  ) => {
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/employer/applications/${appId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      await fetchShift()
+    } catch {
+      setError(`Failed to ${action} application`)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // ── Loading skeleton ───────────────────────────────────
+  if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <Header showBack title="Loading..." />
-        <LoadingState fullScreen />
+      <div dir={isRTL ? 'rtl' : 'ltr'} className="px-4 pt-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-neutral-200 animate-pulse" />
+          <div className="h-6 w-40 bg-neutral-200 rounded animate-pulse" />
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl p-6 animate-pulse">
+              <div className="h-5 w-48 bg-neutral-200 rounded mb-3" />
+              <div className="h-4 w-32 bg-neutral-200 rounded mb-2" />
+              <div className="h-4 w-24 bg-neutral-200 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
-  if (!shift) {
+  // ── Error state ────────────────────────────────────────
+  if (error && !shift) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <Header showBack title="Error" />
-        <ErrorState
-          type="generic"
-          message="Shift not found"
-          onRetry={() => window.location.reload()}
-        />
+      <div dir={isRTL ? 'rtl' : 'ltr'} className="px-4 pt-6">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-neutral-600 mb-6"
+        >
+          <BackIcon className="w-5 h-5" />
+          <span className="font-medium">{t('common.back', language)}</span>
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          {error}
+        </div>
       </div>
     )
   }
 
-  const slotsLeft = shift.slots - shift.filled
+  if (!shift) return null
 
   return (
-    <div
-      className="min-h-screen bg-neutral-50 pb-20"
-      dir={isRTL ? 'rtl' : 'ltr'}
-    >
-      <Header
-        showBack
-        title={shift.title}
-        rightContent={
-          <div className="flex gap-2">
-            <Button variant="ghost" size="icon-sm">
-              <Share2 className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon-sm">
-              <Edit2 className="w-5 h-5" />
-            </Button>
-          </div>
-        }
-      />
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="px-4 pt-6 pb-8">
+      {/* ── Back button ──────────────────────────────── */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-2 text-neutral-600 mb-4"
+      >
+        <BackIcon className="w-5 h-5" />
+        <span className="font-medium">{t('common.back', language)}</span>
+      </button>
 
-      {/* Quick stats */}
-      <div className="px-4 py-3 bg-white border-b border-neutral-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-1 text-neutral-600">
-              <Eye className="w-4 h-4" />
-              {shift.viewCount} views
-            </span>
-            <span className="flex items-center gap-1 text-neutral-600">
-              <Users className="w-4 h-4" />
-              {shift.applicants} applicants
-            </span>
-          </div>
-          <Badge
-            variant={slotsLeft <= 2 ? 'danger' : 'success'}
-            size="sm"
-          >
-            {slotsLeft} spots left
-          </Badge>
-        </div>
-      </div>
+      {/* ── Error banner ─────────────────────────────── */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 mb-4 flex items-center gap-2 text-sm"
+        >
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </motion.div>
+      )}
 
-      {/* Tabs */}
-      <div className="px-4 py-3 bg-white border-b border-neutral-100">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('applicants')}
-            className={cn(
-              'flex-1 py-2 rounded-xl text-sm font-medium',
-              'transition-all duration-200',
-              activeTab === 'applicants'
-                ? 'bg-brand-primary text-white'
-                : 'bg-neutral-100 text-neutral-600'
-            )}
-          >
-            Applicants ({applications.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('details')}
-            className={cn(
-              'flex-1 py-2 rounded-xl text-sm font-medium',
-              'transition-all duration-200',
-              activeTab === 'details'
-                ? 'bg-brand-primary text-white'
-                : 'bg-neutral-100 text-neutral-600'
-            )}
-          >
-            Shift Details
-          </button>
-        </div>
-      </div>
-
-      <main className="px-4 py-4">
-        {activeTab === 'applicants' ? (
-          <ApplicantList
-            applications={applications}
-            isLoading={isLoadingApplications}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onContact={(id) => {
-              const app = applications.find(a => a.workerId === id || a.id === id)
-              if (app?.worker?.phone) {
-                window.open(`tel:${app.worker.phone}`, '_blank')
-              } else {
-                showToast('Contact info not available', 'warning')
+      {/* ── Shift Detail Card ────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl p-5 shadow-sm mb-4"
+      >
+        <div className="flex items-start justify-between mb-3">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editForm.title}
+              onChange={(e) =>
+                setEditForm((p) => ({ ...p, title: e.target.value }))
               }
-            }}
-            onViewProfile={(id) => router.push(`/worker/${id}`)}
-          />
-        ) : (
-          <div className="space-y-4">
-            {/* Shift details */}
-            <Card>
-              <h3 className="font-semibold text-neutral-900 mb-3">Description</h3>
-              <p className="text-neutral-600">{shift.description}</p>
-            </Card>
-
-            <Card>
-              <h3 className="font-semibold text-neutral-900 mb-3">Details</h3>
-              <div className="space-y-3">
-                <DetailRow
-                  icon={<MapPin className="w-5 h-5" />}
-                  label="Location"
-                  value={shift.location.address || shift.city}
-                />
-                <DetailRow
-                  icon={<Calendar className="w-5 h-5" />}
-                  label="Date"
-                  value={new Date(shift.date).toLocaleDateString()}
-                />
-                <DetailRow
-                  icon={<Clock className="w-5 h-5" />}
-                  label="Time"
-                  value={`${shift.startTime} - ${shift.endTime}`}
-                />
-                <DetailRow
-                  icon={<DollarSign className="w-5 h-5" />}
-                  label="Rate"
-                  value={`₪${shift.baseRate}/hr`}
-                />
-                <DetailRow
-                  icon={<Users className="w-5 h-5" />}
-                  label="Workers"
-                  value={`${shift.filled}/${shift.slots} filled`}
-                />
+              className="flex-1 text-lg font-bold text-neutral-900 border-b-2 border-brand-primary focus:outline-none bg-transparent"
+            />
+          ) : (
+            <h2 className="text-lg font-bold text-neutral-900 flex-1">
+              {shift.title}
+            </h2>
+          )}
+          <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+            <span
+              className={cn(
+                'px-2.5 py-1 rounded-full text-xs font-medium capitalize',
+                statusColor(shift.status)
+              )}
+            >
+              {shift.status}
+            </span>
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+              >
+                <Edit3 className="w-4 h-4 text-neutral-500" />
+              </button>
+            ) : (
+              <div className="flex gap-1">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={actionLoading}
+                  className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center hover:bg-emerald-200 transition-colors"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                  ) : (
+                    <Save className="w-4 h-4 text-emerald-600" />
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditing(false)
+                    setEditForm({
+                      title: shift.title,
+                      description: shift.description || '',
+                      baseRate: shift.baseRate,
+                      slots: shift.slots,
+                    })
+                  }}
+                  className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+                >
+                  <X className="w-4 h-4 text-neutral-500" />
+                </button>
               </div>
-            </Card>
+            )}
+          </div>
+        </div>
 
-            <div className="flex gap-3">
-              <Button variant="ghost" fullWidth>
-                Cancel Shift
-              </Button>
-              <Button variant="primary" fullWidth>
-                Edit Shift
-              </Button>
-            </div>
+        {/* Description */}
+        {isEditing ? (
+          <textarea
+            value={editForm.description}
+            onChange={(e) =>
+              setEditForm((p) => ({ ...p, description: e.target.value }))
+            }
+            rows={3}
+            className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+            placeholder="Description..."
+          />
+        ) : shift.description ? (
+          <p className="text-sm text-neutral-600 mb-3">{shift.description}</p>
+        ) : null}
+
+        {/* Details grid */}
+        <div className="grid grid-cols-2 gap-3 text-xs text-neutral-500">
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="w-4 h-4" />
+            <span>{shift.date}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4" />
+            <span>{shift.startTime} - {shift.endTime}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-4 h-4" />
+            <span>{shift.cityCode}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-4 h-4" />
+            <span className="capitalize">{shift.urgency}</span>
+          </div>
+        </div>
+
+        {/* Rate & Slots (editable) */}
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-neutral-100">
+          <div className="flex items-center gap-1.5">
+            <DollarSign className="w-4 h-4 text-brand-primary" />
+            {isEditing ? (
+              <input
+                type="number"
+                value={editForm.baseRate}
+                onChange={(e) =>
+                  setEditForm((p) => ({ ...p, baseRate: Number(e.target.value) }))
+                }
+                className="w-16 text-sm font-semibold border-b border-brand-primary focus:outline-none bg-transparent"
+              />
+            ) : (
+              <span className="font-semibold text-brand-primary">
+                {'\u20AA'}{shift.baseRate}/hr
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-neutral-500" />
+            {isEditing ? (
+              <input
+                type="number"
+                min="1"
+                value={editForm.slots}
+                onChange={(e) =>
+                  setEditForm((p) => ({ ...p, slots: Number(e.target.value) }))
+                }
+                className="w-12 text-sm font-medium border-b border-brand-primary focus:outline-none bg-transparent"
+              />
+            ) : (
+              <span className="text-sm text-neutral-600">
+                {shift.filled}/{shift.slots} filled
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Requirements */}
+        {shift.requirements && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-neutral-100">
+            {shift.requirements.needsCar && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 text-xs text-neutral-600">
+                <Car className="w-3 h-3" /> Car
+              </span>
+            )}
+            {shift.requirements.needsTools && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 text-xs text-neutral-600">
+                <Wrench className="w-3 h-3" /> Tools
+              </span>
+            )}
+            {shift.requirements.teamSize > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 text-xs text-neutral-600">
+                <Users className="w-3 h-3" /> Team: {shift.requirements.teamSize}
+              </span>
+            )}
+            {shift.requirements.minRating > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 text-xs text-neutral-600">
+                <Star className="w-3 h-3" /> Min: {shift.requirements.minRating}
+              </span>
+            )}
+            {shift.specialization && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-brand-primary/10 text-xs text-brand-primary">
+                <Briefcase className="w-3 h-3" /> {shift.specialization}
+              </span>
+            )}
           </div>
         )}
-      </main>
-    </div>
-  )
-}
+      </motion.div>
 
-function DetailRow({
-  icon,
-  label,
-  value
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-neutral-400">{icon}</span>
-      <div className="flex-1">
-        <p className="text-sm text-neutral-500">{label}</p>
-        <p className="font-medium">{value}</p>
+      {/* ── Applications Section ──────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="bg-white rounded-2xl p-5 shadow-sm mb-4"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider">
+            Applications ({applications.length})
+          </h3>
+        </div>
+
+        {applications.length === 0 ? (
+          <div className="text-center py-8">
+            <Users className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
+            <p className="text-sm text-neutral-500">No applications yet</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {applications.map((app, idx) => (
+              <motion.div
+                key={app.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className="border border-neutral-100 rounded-xl p-3"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Avatar */}
+                  {app.workerPhotoUrl ? (
+                    <img
+                      src={app.workerPhotoUrl}
+                      alt={app.workerName}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center">
+                      <User className="w-5 h-5 text-brand-primary" />
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-neutral-900 truncate">
+                      {app.workerName}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-neutral-500">
+                      <span className="flex items-center gap-0.5">
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                        {app.workerRating.toFixed(1)}
+                      </span>
+                      {app.workerSpecialization && (
+                        <span>{app.workerSpecialization}</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">
+                      Applied: {app.appliedAt}
+                    </p>
+                  </div>
+
+                  {/* Status / Actions */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {app.status.toLowerCase() === 'pending' ? (
+                      <>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          disabled={actionLoading}
+                          onClick={() =>
+                            handleApplicationAction(app.id, 'approve')
+                          }
+                          className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center hover:bg-emerald-200 transition-colors"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          disabled={actionLoading}
+                          onClick={() =>
+                            handleApplicationAction(app.id, 'reject')
+                          }
+                          className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center hover:bg-red-200 transition-colors"
+                        >
+                          <XCircle className="w-4 h-4 text-red-600" />
+                        </motion.button>
+                      </>
+                    ) : (
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 rounded-full text-xs font-medium capitalize',
+                          appStatusColor(app.status)
+                        )}
+                      >
+                        {app.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── Management Actions ────────────────────────── */}
+      <div className="space-y-3 mt-6">
+        {/* Open / Close shift */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          disabled={actionLoading}
+          onClick={handleToggleStatus}
+          className={cn(
+            'w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold transition-colors disabled:opacity-50',
+            shift.status === 'open'
+              ? 'bg-amber-50 border-2 border-amber-300 text-amber-700 hover:bg-amber-100'
+              : 'bg-emerald-50 border-2 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+          )}
+        >
+          {actionLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : shift.status === 'open' ? (
+            <>
+              <Lock className="w-5 h-5" />
+              Close Shift
+            </>
+          ) : (
+            <>
+              <Unlock className="w-5 h-5" />
+              Reopen Shift
+            </>
+          )}
+        </motion.button>
+
+        {/* Delete shift */}
+        {!showDeleteConfirm ? (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Shift
+          </button>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 border border-red-200 rounded-2xl p-4"
+          >
+            <p className="text-sm text-red-700 font-medium mb-3">
+              Are you sure you want to delete this shift? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-neutral-600 font-medium text-sm"
+              >
+                {t('common.cancel', language)}
+              </button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                disabled={actionLoading}
+                onClick={handleDelete}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                Delete
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   )

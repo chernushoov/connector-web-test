@@ -1,97 +1,83 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { useUI } from '@/store'
+import { useUI, useAuth } from '@/store'
 import { t } from '@/i18n/translations'
 import { Header, Navigation, LoadingState } from '@/components/shared'
 import { ReviewList, RatingOverview } from '@/components/profile'
 import type { Review } from '@/types'
 
-// Mock reviews
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    authorId: 'emp1',
-    authorName: 'FastLogistics Ltd',
-    targetId: 'user1',
-    targetType: 'worker',
-    rating: 5,
-    comment: 'Excellent worker! Very reliable and hardworking. Would definitely hire again.',
-    shiftId: 'shift1',
-    shiftTitle: 'Warehouse Helper',
-    isFromEmployer: true,
-    createdAt: new Date(Date.now() - 86400000),
-  },
-  {
-    id: '2',
-    authorId: 'emp2',
-    authorName: 'QuickMove',
-    targetId: 'user1',
-    targetType: 'worker',
-    rating: 5,
-    comment: 'Great job on the moving project. Very efficient and careful with the items.',
-    shiftId: 'shift2',
-    shiftTitle: 'Moving Assistant',
-    isFromEmployer: true,
-    createdAt: new Date(Date.now() - 259200000),
-  },
-  {
-    id: '3',
-    authorId: 'emp3',
-    authorName: 'Marina Events',
-    targetId: 'user1',
-    targetType: 'worker',
-    rating: 4,
-    comment: 'Good work setting up the event. Arrived on time and followed instructions well.',
-    shiftId: 'shift3',
-    shiftTitle: 'Event Setup Crew',
-    isFromEmployer: true,
-    createdAt: new Date(Date.now() - 604800000),
-  },
-  {
-    id: '4',
-    authorId: 'emp4',
-    authorName: 'TechStore',
-    targetId: 'user1',
-    targetType: 'worker',
-    rating: 5,
-    comment: 'Professional attitude, fast learner. Helped with inventory management.',
-    shiftId: 'shift4',
-    shiftTitle: 'Retail Assistant',
-    isFromEmployer: true,
-    createdAt: new Date(Date.now() - 1209600000),
-  },
-  {
-    id: '5',
-    authorId: 'emp5',
-    authorName: 'CleanPro Services',
-    targetId: 'user1',
-    targetType: 'worker',
-    rating: 5,
-    comment: 'Thorough cleaning, attention to detail. Very satisfied.',
-    shiftId: 'shift5',
-    shiftTitle: 'Cleaning Staff',
-    isFromEmployer: true,
-    createdAt: new Date(Date.now() - 2592000000),
-  },
-]
+interface FreeReview {
+  id: string
+  rating: number
+  text: string | null
+  tags: string[]
+  createdAt: string
+  fromUser: {
+    id: string
+    name: string | null
+    rating: number
+  }
+  task: {
+    id: string
+    title: string
+    category: string
+  }
+}
 
 export default function ReviewsPage() {
   const { language, isRTL } = useUI()
+  const { userId } = useAuth()
   const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | '5' | '4' | '3' | '2' | '1'>('all')
+  const [distribution, setDistribution] = useState<Record<number, number>>({})
 
   useEffect(() => {
-    const load = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      setReviews(mockReviews)
-      setIsLoading(false)
+    const loadReviews = async () => {
+      if (!userId) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/free/reviews/${userId}`, {
+          headers: {
+            'x-user-id': userId,
+          },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+
+          // Transform API response to Review type
+          const transformedReviews: Review[] = data.reviews.map((r: FreeReview) => ({
+            id: r.id,
+            authorId: r.fromUser.id,
+            authorName: r.fromUser.name || 'User',
+            targetId: userId,
+            targetType: 'worker' as const,
+            rating: r.rating,
+            comment: r.text || '',
+            shiftId: r.task.id,
+            shiftTitle: r.task.title,
+            isFromEmployer: true,
+            createdAt: new Date(r.createdAt),
+          }))
+
+          setReviews(transformedReviews)
+          setDistribution(data.distribution || {})
+        }
+      } catch (error) {
+        console.error('Failed to load reviews:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    load()
-  }, [])
+
+    loadReviews()
+  }, [userId])
 
   const filteredReviews = filter === 'all'
     ? reviews
@@ -101,14 +87,11 @@ export default function ReviewsPage() {
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0
 
-  const distribution = reviews.reduce((acc, r) => {
-    acc[r.rating] = (acc[r.rating] || 0) + 1
-    return acc
-  }, {} as Record<number, number>)
-
-  const distributionPercent = Object.fromEntries(
-    Object.entries(distribution).map(([k, v]) => [k, Math.round((v / reviews.length) * 100)])
-  )
+  const distributionPercent = reviews.length > 0
+    ? Object.fromEntries(
+        Object.entries(distribution).map(([k, v]) => [k, Math.round((v / reviews.length) * 100)])
+      )
+    : {}
 
   return (
     <div
@@ -116,13 +99,20 @@ export default function ReviewsPage() {
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <Header
-        title={t('profile.reviews', language as any)}
+        title={t('profile.reviews', language as 'ru' | 'he' | 'en')}
         showBack
       />
 
       <main className="px-4 py-4 space-y-6">
         {isLoading ? (
           <LoadingState variant="skeleton" />
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-neutral-500">No reviews yet</p>
+            <p className="text-sm text-neutral-400 mt-1">
+              Reviews will appear after completing tasks
+            </p>
+          </div>
         ) : (
           <>
             {/* Rating overview */}
@@ -137,7 +127,7 @@ export default function ReviewsPage() {
               {['all', '5', '4', '3', '2', '1'].map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFilter(f as any)}
+                  onClick={() => setFilter(f as 'all' | '5' | '4' | '3' | '2' | '1')}
                   className={cn(
                     'px-4 py-2 rounded-full text-sm font-medium',
                     'whitespace-nowrap transition-all duration-200',
