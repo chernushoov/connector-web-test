@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useUI, useWorker } from '@/store'
 import { t } from '@/i18n/translations'
-import { Header, Navigation } from '@/components/shared'
+import { Header, Navigation, ErrorState } from '@/components/shared'
 import { EarningsChart, EarningsSummary } from '@/components/worker'
 import { Card } from '@/components/ui/Card'
 import {
@@ -15,6 +15,7 @@ import {
   Briefcase,
   ChevronRight
 } from 'lucide-react'
+import type { Language } from '@/types'
 
 type Period = 'week' | 'month' | 'year'
 
@@ -42,31 +43,33 @@ export default function EarningsPage() {
   const [earningsData, setEarningsData] = useState<EarningsData[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  // Fetch earnings data from API
-  useEffect(() => {
-    async function fetchEarnings() {
-      setIsLoading(true)
-      try {
-        const res = await fetch(`/api/analytics?period=${period}`)
-        if (res.ok) {
-          const data = await res.json()
-          setEarningsData(data.chartData || [])
-          setTransactions(
-            (data.transactions || []).map((tx: Record<string, unknown>) => ({
-              ...tx,
-              date: new Date(tx.date as string),
-            }))
-          )
-        }
-      } catch {
-        // API not available yet — show empty state
-      } finally {
-        setIsLoading(false)
+  const fetchEarnings = useCallback(async () => {
+    setIsLoading(true)
+    setError(false)
+    try {
+      const res = await fetch(`/api/analytics?period=${period}`)
+      if (res.ok) {
+        const data = await res.json()
+        setEarningsData(data.chartData || [])
+        setTransactions(
+          (data.transactions || []).map((tx: Record<string, unknown>) => ({
+            ...tx,
+            date: new Date(tx.date as string),
+          }))
+        )
       }
+    } catch {
+      setError(true)
+    } finally {
+      setIsLoading(false)
     }
-    fetchEarnings()
   }, [period])
+
+  useEffect(() => {
+    fetchEarnings()
+  }, [fetchEarnings])
 
   return (
     <div
@@ -74,11 +77,15 @@ export default function EarningsPage() {
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <Header
-        title={t('profile.earned', language as any)}
+        title={t('profile.earned', language as Language)}
         showBack
       />
 
       <main className="px-4 py-4 space-y-6">
+        {error ? (
+          <ErrorState type="network" onRetry={fetchEarnings} />
+        ) : (
+        <>
         {/* Summary cards */}
         <EarningsSummary />
 
@@ -96,9 +103,9 @@ export default function EarningsPage() {
                   : 'bg-white text-neutral-600 hover:bg-neutral-100'
               )}
             >
-              {p === 'week' && t('filter.week', language as any)}
-              {p === 'month' && 'Month'}
-              {p === 'year' && 'Year'}
+              {p === 'week' && t('filter.week', language as Language)}
+              {p === 'month' && t('period.month', language as Language)}
+              {p === 'year' && t('period.year', language as Language)}
             </button>
           ))}
         </div>
@@ -109,7 +116,7 @@ export default function EarningsPage() {
         ) : !isLoading ? (
           <Card variant="outlined" className="py-8 text-center">
             <DollarSign className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
-            <p className="text-sm text-neutral-500">No earnings data yet</p>
+            <p className="text-sm text-neutral-500">{t('empty.noEarnings', language as Language)}</p>
           </Card>
         ) : null}
 
@@ -120,7 +127,7 @@ export default function EarningsPage() {
               <Clock className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-sm text-neutral-500">Total shifts</p>
+              <p className="text-sm text-neutral-500">{t('stats.totalShifts', language as Language)}</p>
               <p className="text-lg font-bold">{completedShifts}</p>
             </div>
           </Card>
@@ -129,7 +136,7 @@ export default function EarningsPage() {
               <DollarSign className="w-5 h-5 text-brand-primary" />
             </div>
             <div>
-              <p className="text-sm text-neutral-500">Total earned</p>
+              <p className="text-sm text-neutral-500">{t('stats.totalEarned', language as Language)}</p>
               <p className="text-lg font-bold">₪{totalEarned.toLocaleString()}</p>
             </div>
           </Card>
@@ -139,7 +146,7 @@ export default function EarningsPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-neutral-900">
-              Recent Transactions
+              {t('stats.recentTransactions', language as Language)}
             </h2>
           </div>
 
@@ -159,10 +166,12 @@ export default function EarningsPage() {
           ) : !isLoading ? (
             <Card variant="outlined" className="py-8 text-center">
               <Briefcase className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
-              <p className="text-sm text-neutral-500">No transactions yet</p>
+              <p className="text-sm text-neutral-500">{t('empty.noTransactions', language as Language)}</p>
             </Card>
           ) : null}
         </section>
+        </>
+        )}
       </main>
 
       <Navigation />
@@ -171,6 +180,7 @@ export default function EarningsPage() {
 }
 
 function TransactionCard({ transaction }: { transaction: Transaction }) {
+  const { language } = useUI()
   const isPayout = transaction.type === 'payout'
 
   return (
@@ -199,7 +209,7 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
         </p>
       </div>
 
-      <div className="text-right">
+      <div className="text-end">
         <p className={cn(
           'font-bold',
           isPayout ? 'text-success' : 'text-neutral-900'
@@ -207,7 +217,7 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
           {isPayout ? '+' : ''}₪{transaction.amount}
         </p>
         <p className="text-xs text-neutral-400">
-          {formatRelativeTime(transaction.date)}
+          {formatRelativeTime(transaction.date, language)}
         </p>
       </div>
 
@@ -216,16 +226,16 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
   )
 }
 
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(date: Date, language: string): string {
   const now = Date.now()
   const diff = now - date.getTime()
 
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
 
-  if (hours < 1) return 'Just now'
-  if (hours < 24) return `${hours}h ago`
-  if (days < 7) return `${days}d ago`
+  if (hours < 1) return t('time.justNow', language as Language)
+  if (hours < 24) return `${hours} ${t('time.hoursAgo', language as Language)}`
+  if (days < 7) return `${days} ${t('time.daysAgo', language as Language)}`
 
   return date.toLocaleDateString()
 }

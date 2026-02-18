@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { signAdminToken } from '@/lib/admin-auth'
+import { rateLimit } from '@/lib/rate-limit'
+import { RATE_LIMITS } from '@/lib/config'
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@connector.co.il').split(',')
+const ADMIN_EMAILS = process.env.ADMIN_EMAILS?.split(',')
+if (!ADMIN_EMAILS || ADMIN_EMAILS.length === 0) {
+  console.error('[FATAL] ADMIN_EMAILS environment variable is not set')
+}
+
+const adminAuthRateLimiter = rateLimit({
+  interval: RATE_LIMITS.ADMIN_AUTH.interval,
+  maxRequests: RATE_LIMITS.ADMIN_AUTH.maxRequests,
+})
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit by IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rateLimitResult = adminAuthRateLimiter.check(ip)
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Try again later.', retryAfter: rateLimitResult.retryAfter },
+        { status: 429 }
+      )
+    }
+
     const { email, password } = await request.json()
 
     if (!email || !password) {
@@ -22,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    if (!ADMIN_EMAILS.includes(email)) {
+    if (!ADMIN_EMAILS || !ADMIN_EMAILS.includes(email)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 

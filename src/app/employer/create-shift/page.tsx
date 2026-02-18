@@ -332,7 +332,7 @@ export default function CreateShiftPage() {
                 {/* Date */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    <Calendar className="w-4 h-4 inline mr-2" />
+                    <Calendar className="w-4 h-4 inline me-2" />
                     Date
                   </label>
                   <input
@@ -385,7 +385,7 @@ export default function CreateShiftPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    <MapPin className="w-4 h-4 inline mr-2" />
+                    <MapPin className="w-4 h-4 inline me-2" />
                     City
                   </label>
                   <select
@@ -444,7 +444,7 @@ export default function CreateShiftPage() {
                 {/* Rate */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    <DollarSign className="w-4 h-4 inline mr-2" />
+                    <DollarSign className="w-4 h-4 inline me-2" />
                     Hourly Rate (₪)
                   </label>
                   <input
@@ -463,7 +463,7 @@ export default function CreateShiftPage() {
                 {/* Slots */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    <Users className="w-4 h-4 inline mr-2" />
+                    <Users className="w-4 h-4 inline me-2" />
                     Workers Needed
                   </label>
                   <div className="flex items-center gap-4">
@@ -588,7 +588,7 @@ function ToggleOption({
     >
       <div className="flex items-center gap-3">
         <span className="text-neutral-400">{icon}</span>
-        <div className="text-left">
+        <div className="text-start">
           <p className="font-medium text-neutral-900">{label}</p>
           {description && (
             <p className="text-xs text-neutral-500">{description}</p>

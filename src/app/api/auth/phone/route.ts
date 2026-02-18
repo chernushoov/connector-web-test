@@ -6,15 +6,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOtpSchema, validate, formatErrors } from '@/lib/validators'
 import { rateLimit } from '@/lib/rate-limit'
-
-const isDemoMode = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    return !url || url.includes('placeholder')
-}
+import { isDemoMode } from '@/lib/demo'
+import { RATE_LIMITS } from '@/lib/config'
 
 const phoneRateLimiter = rateLimit({
-    interval: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 3, // max 3 SMS per phone per 15 min
+    interval: RATE_LIMITS.PHONE_AUTH.interval,
+    maxRequests: RATE_LIMITS.PHONE_AUTH.maxRequests,
 })
 
 export async function POST(request: NextRequest) {

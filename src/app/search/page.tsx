@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -25,9 +25,8 @@ import {
   Zap,
   Shield
 } from 'lucide-react'
-import type { ShiftPosting, WorkerProfile, Language } from '@/types'
+import type { WorkerProfile, Language } from '@/types'
 
-// Mock shifts for search (simplified structure)
 interface SearchShift {
   id: string
   title: string
@@ -41,160 +40,6 @@ interface SearchShift {
   spotsFilled: number
   urgency: 'instant' | 'normal'
 }
-
-const mockShifts: SearchShift[] = [
-  {
-    id: '1',
-    employerName: 'FastLogistics Ltd',
-    title: 'Warehouse Helper',
-    category: 'warehouse',
-    startTime: '08:00',
-    endTime: '16:00',
-    hourlyRate: 55,
-    location: { address: 'Tel Aviv, Industrial Area' },
-    spotsTotal: 5,
-    spotsFilled: 3,
-    urgency: 'instant',
-  },
-  {
-    id: '2',
-    employerName: 'EventPro',
-    title: 'Event Setup Crew',
-    category: 'events',
-    startTime: '06:00',
-    endTime: '14:00',
-    hourlyRate: 65,
-    location: { address: 'Herzliya, Convention Center' },
-    spotsTotal: 8,
-    spotsFilled: 2,
-    urgency: 'normal',
-  },
-  {
-    id: '3',
-    employerName: 'QuickMove',
-    title: 'Moving Assistant',
-    category: 'moving',
-    startTime: '07:00',
-    endTime: '15:00',
-    hourlyRate: 60,
-    location: { address: 'Ramat Gan' },
-    spotsTotal: 3,
-    spotsFilled: 1,
-    urgency: 'normal',
-  },
-]
-
-// Mock workers for search
-const mockWorkers: WorkerProfile[] = [
-  {
-    id: 'w1',
-    phone: '+972501111111',
-    name: 'David Ben',
-    photoUrl: undefined,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    language: 'he',
-    isVerified: true,
-    verificationStatus: 'verified',
-    skills: ['warehouse', 'moving', 'driving'],
-    availabilityStatus: 'available',
-    rating: 4.9,
-    reviewCount: 52,
-    hourlyRate: 55,
-    city: 'Tel Aviv',
-    specialization: 'Logistics & Moving',
-    experience: 4,
-    about: 'Experienced logistics worker',
-    hasCar: true,
-    hasTools: false,
-    teamSize: 1,
-    availability: 'flexible',
-    minRate: 50,
-    maxRate: 80,
-    documents: [],
-    portfolio: [],
-    completedShifts: 78,
-    totalEarned: 42000,
-    totalHours: 650,
-    reliabilityScore: 98,
-    responseTime: 3,
-    onTimeRate: 0.99,
-    languages: ['Hebrew', 'English'],
-    isPro: true,
-  },
-  {
-    id: 'w2',
-    phone: '+972502222222',
-    name: 'Maria Ivanova',
-    photoUrl: undefined,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    language: 'ru',
-    isVerified: true,
-    verificationStatus: 'verified',
-    skills: ['cleaning', 'events', 'hospitality'],
-    availabilityStatus: 'available',
-    rating: 4.7,
-    reviewCount: 34,
-    hourlyRate: 50,
-    city: 'Netanya',
-    specialization: 'Cleaning & Events',
-    experience: 2,
-    about: 'Detail-oriented cleaner',
-    hasCar: false,
-    hasTools: true,
-    teamSize: 1,
-    availability: 'flexible',
-    minRate: 45,
-    maxRate: 70,
-    documents: [],
-    portfolio: [],
-    completedShifts: 45,
-    totalEarned: 22500,
-    totalHours: 380,
-    reliabilityScore: 95,
-    responseTime: 8,
-    onTimeRate: 0.96,
-    languages: ['Russian', 'Hebrew', 'English'],
-    isPro: false,
-  },
-  {
-    id: 'w3',
-    phone: '+972503333333',
-    name: 'Ahmed Hassan',
-    photoUrl: undefined,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    language: 'ar',
-    isVerified: true,
-    verificationStatus: 'verified',
-    skills: ['construction', 'warehouse', 'driving'],
-    availabilityStatus: 'busy',
-    rating: 4.8,
-    reviewCount: 67,
-    hourlyRate: 65,
-    city: 'Haifa',
-    specialization: 'Construction & Heavy Work',
-    experience: 6,
-    about: 'Skilled construction worker',
-    hasCar: true,
-    hasTools: true,
-    teamSize: 3,
-    availability: 'flexible',
-    minRate: 55,
-    maxRate: 100,
-    documents: [],
-    portfolio: [],
-    completedShifts: 120,
-    totalEarned: 78000,
-    totalHours: 1200,
-    reliabilityScore: 97,
-    responseTime: 5,
-    onTimeRate: 0.98,
-    languages: ['Arabic', 'Hebrew'],
-    isPro: true,
-  },
-]
 
 const recentSearches = [
   'Warehouse helper',
@@ -226,39 +71,65 @@ export default function SearchPage() {
     verified: false,
   })
 
-  const [shifts] = useState<SearchShift[]>(mockShifts)
-  const [workers] = useState<WorkerProfile[]>(mockWorkers)
+  const [shifts, setShifts] = useState<SearchShift[]>([])
+  const [workers, setWorkers] = useState<WorkerProfile[]>([])
 
-  const filteredShifts = useMemo(() => {
-    if (!query.trim()) return []
-    return shifts.filter(shift =>
-      shift.title.toLowerCase().includes(query.toLowerCase()) ||
-      shift.location.address.toLowerCase().includes(query.toLowerCase()) ||
-      shift.category.toLowerCase().includes(query.toLowerCase())
-    )
-  }, [query, shifts])
-
-  const filteredWorkers = useMemo(() => {
-    if (!query.trim()) return []
-    let result = workers.filter(worker =>
-      worker.name.toLowerCase().includes(query.toLowerCase()) ||
-      worker.city?.toLowerCase().includes(query.toLowerCase()) ||
-      worker.skills.some(s => s.toLowerCase().includes(query.toLowerCase())) ||
-      worker.specialization?.toLowerCase().includes(query.toLowerCase())
-    )
-    if (filters.verified) {
-      result = result.filter(w => w.isVerified)
+  const performSearch = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      setShifts([])
+      setWorkers([])
+      return
     }
-    return result
-  }, [query, workers, filters.verified])
+
+    setIsSearching(true)
+    try {
+      if (searchMode === 'shifts') {
+        const res = await fetch('/api/shifts/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchQuery }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setShifts(
+            (data.shifts || []).map((s: Record<string, unknown>) => ({
+              id: s.id as string,
+              title: s.title as string,
+              employerName: (s.employer as Record<string, unknown>)?.company as string || (s.employer as Record<string, unknown>)?.name as string || '',
+              category: ((s.requiredSkills as string[]) || [])[0] || '',
+              startTime: s.startTime as string || '',
+              endTime: s.endTime as string || '',
+              hourlyRate: s.baseRate as number || 0,
+              location: { address: (s.location as Record<string, unknown>)?.address as string || '' },
+              spotsTotal: s.slots as number || 0,
+              spotsFilled: s.filled as number || 0,
+              urgency: s.urgency === 'instant' ? 'instant' as const : 'normal' as const,
+            }))
+          )
+        }
+      } else {
+        const res = await fetch(`/api/shifts?search=${encodeURIComponent(searchQuery)}&status=active`)
+        if (res.ok) {
+          const data = await res.json()
+          setWorkers(data.workers || [])
+        }
+      }
+    } catch {
+      // Search failed silently
+    } finally {
+      setIsSearching(false)
+    }
+  }, [searchMode])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      performSearch(query)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query, performSearch])
 
   const handleSearch = (searchQuery: string) => {
     setQuery(searchQuery)
-    if (searchQuery.trim()) {
-      setIsSearching(true)
-      // Simulate search delay
-      setTimeout(() => setIsSearching(false), 300)
-    }
   }
 
   const handleCategoryClick = (category: string) => {
@@ -266,8 +137,8 @@ export default function SearchPage() {
   }
 
   const hasResults = searchMode === 'shifts'
-    ? filteredShifts.length > 0
-    : filteredWorkers.length > 0
+    ? shifts.length > 0
+    : workers.length > 0
 
   return (
     <div
@@ -279,17 +150,18 @@ export default function SearchPage() {
         <div className="px-4 py-3">
           {/* Search input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
               type="text"
               value={query}
               onChange={(e) => handleSearch(e.target.value)}
+              aria-label={t('common.search', language as Language)}
               placeholder={searchMode === 'shifts'
                 ? t('search.placeholder', language as Language)
-                : 'Search workers by name, skill, or city...'
+                : t('search.workersPlaceholder', language as Language)
               }
               className={cn(
-                'w-full pl-10 pr-10 py-3 rounded-xl',
+                'w-full ps-10 pe-10 py-3 rounded-xl',
                 'bg-neutral-100 border-none',
                 'text-neutral-900 placeholder-neutral-400',
                 'focus:outline-none focus:ring-2 focus:ring-brand-primary/20'
@@ -299,7 +171,8 @@ export default function SearchPage() {
             {query && (
               <button
                 onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-neutral-200 rounded-full"
+                aria-label="Clear search"
+                className="absolute end-3 top-1/2 -translate-y-1/2 p-1 hover:bg-neutral-200 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary"
               >
                 <X className="w-4 h-4 text-neutral-400" />
               </button>
@@ -332,7 +205,8 @@ export default function SearchPage() {
             </button>
             <button
               onClick={() => setShowFilters(true)}
-              className="p-2 rounded-lg bg-neutral-100 text-neutral-600"
+              aria-label={t('common.filter', language as Language)}
+              className="p-2 rounded-lg bg-neutral-100 text-neutral-600 focus:outline-none focus:ring-2 focus:ring-brand-primary"
             >
               <Filter className="w-5 h-5" />
             </button>
@@ -382,7 +256,7 @@ export default function SearchPage() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{cat.label}</p>
-                      <p className="text-sm text-neutral-500">{cat.count} shifts available</p>
+                      <p className="text-sm text-neutral-500">{cat.count} {t('search.shiftsAvailable', language as Language)}</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-neutral-400" />
                   </Card>
@@ -399,7 +273,7 @@ export default function SearchPage() {
               <Card className="p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <Zap className="w-5 h-5 text-brand-accent" />
-                  <span className="font-medium">High Demand This Week</span>
+                  <span className="font-medium">{t('search.highDemand', language as Language)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {['Warehouse', 'Delivery', 'Events', 'Cleaning'].map((tag) => (
@@ -428,8 +302,8 @@ export default function SearchPage() {
             {/* Results count */}
             <p className="text-sm text-neutral-500 mb-4">
               {searchMode === 'shifts'
-                ? `${filteredShifts.length} shifts found`
-                : `${filteredWorkers.length} workers found`
+                ? `${shifts.length} ${t('tabs.shifts', language as Language).toLowerCase()}`
+                : `${workers.length} ${t('tabs.workers', language as Language).toLowerCase()}`
               }
             </p>
 
@@ -438,7 +312,7 @@ export default function SearchPage() {
               <EmptyState
                 icon={<Search className="w-16 h-16" />}
                 title={t('search.noResults', language as Language)}
-                subtitle="Try different keywords or adjust filters"
+                subtitle={t('search.tryDifferent', language as Language)}
               />
             )}
 
@@ -446,7 +320,7 @@ export default function SearchPage() {
             {searchMode === 'shifts' && (
               <div className="space-y-3">
                 <AnimatePresence>
-                  {filteredShifts.map((shift, index) => (
+                  {shifts.map((shift, index) => (
                     <motion.div
                       key={shift.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -464,7 +338,7 @@ export default function SearchPage() {
             {searchMode === 'workers' && (
               <div className="space-y-3">
                 <AnimatePresence>
-                  {filteredWorkers.map((worker, index) => (
+                  {workers.map((worker, index) => (
                     <motion.div
                       key={worker.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -515,7 +389,7 @@ function ShiftResultCard({ shift, language }: { shift: SearchShift; language: La
               {shift.title}
             </h3>
             {shift.urgency === 'instant' && (
-              <Badge variant="danger" size="sm">Urgent</Badge>
+              <Badge variant="danger" size="sm">{t('common.urgent', language as Language)}</Badge>
             )}
           </div>
           <p className="text-sm text-neutral-500">{shift.employerName}</p>
@@ -530,7 +404,7 @@ function ShiftResultCard({ shift, language }: { shift: SearchShift; language: La
             </span>
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <p className="font-bold text-brand-primary">₪{shift.hourlyRate}/hr</p>
           <p className="text-xs text-neutral-500 mt-1">
             {spotsLeft} {t('shift.spotsLeft', language)}
@@ -552,7 +426,7 @@ function WorkerResultCard({ worker, language, onClick }: { worker: WorkerProfile
             src={worker.photoUrl}
           />
           {worker.availabilityStatus === 'available' && (
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success rounded-full border-2 border-white" />
+            <div className="absolute -bottom-1 -end-1 w-4 h-4 bg-success rounded-full border-2 border-white" />
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -584,7 +458,7 @@ function WorkerResultCard({ worker, language, onClick }: { worker: WorkerProfile
             ))}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <p className="font-bold text-brand-primary">₪{worker.hourlyRate}/hr</p>
           {worker.city && (
             <p className="text-xs text-neutral-500 mt-1 flex items-center gap-1">

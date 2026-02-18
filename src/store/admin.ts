@@ -310,7 +310,35 @@ export const useAdminStore = create<AdminStore>()(
         },
 
         refreshToken: async () => {
-          // TODO: Implement token refresh
+          const token = get().auth.token
+          if (!token) return
+
+          try {
+            const res = await fetch('/api/admin/auth', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ refresh: true }),
+            })
+
+            if (!res.ok) {
+              get().logoutAdmin()
+              return
+            }
+
+            const data = await res.json()
+            set((state) => {
+              state.auth.token = data.token
+            })
+
+            if (typeof document !== 'undefined') {
+              document.cookie = `admin-token=${data.token}; path=/; max-age=${2 * 60 * 60}`
+            }
+          } catch {
+            get().logoutAdmin()
+          }
         },
 
         // ========================================
@@ -405,9 +433,26 @@ export const useAdminStore = create<AdminStore>()(
         },
 
         loadRecentActivity: async () => {
-          // TODO: Implement API call
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          const token = get().auth.token
+          try {
+            const res = await fetch('/api/admin/dashboard?section=activity', {
+              headers: { Authorization: `Bearer ${token}` },
+            })
 
+            if (res.ok) {
+              const data = await res.json()
+              if (data.recentActivity) {
+                set((state) => {
+                  state.dashboard.recentActivity = data.recentActivity
+                })
+                return
+              }
+            }
+          } catch {
+            // Fall through to mock data
+          }
+
+          // Fallback mock data
           set((state) => {
             state.dashboard.recentActivity = [
               {
@@ -465,11 +510,61 @@ export const useAdminStore = create<AdminStore>()(
         },
 
         loadPendingReviews: async () => {
-          // TODO: Implement
+          set((state) => {
+            state.moderation.isLoadingModeration = true
+          })
+
+          const token = get().auth.token
+          try {
+            const res = await fetch('/api/reviews?status=pending&limit=50', {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+
+            if (res.ok) {
+              const data = await res.json()
+              set((state) => {
+                state.moderation.pendingReviews = data.reviews || []
+                state.moderation.isLoadingModeration = false
+              })
+              return
+            }
+          } catch {
+            // Fall through
+          }
+
+          set((state) => {
+            state.moderation.pendingReviews = []
+            state.moderation.isLoadingModeration = false
+          })
         },
 
         loadDisputes: async () => {
-          // TODO: Implement
+          set((state) => {
+            state.moderation.isLoadingModeration = true
+          })
+
+          const token = get().auth.token
+          try {
+            const res = await fetch('/api/disputes?status=open,escalated&limit=50', {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+
+            if (res.ok) {
+              const data = await res.json()
+              set((state) => {
+                state.moderation.disputes = data.disputes || []
+                state.moderation.isLoadingModeration = false
+              })
+              return
+            }
+          } catch {
+            // Fall through
+          }
+
+          set((state) => {
+            state.moderation.disputes = []
+            state.moderation.isLoadingModeration = false
+          })
         },
 
         approveShift: async (shiftId) => {

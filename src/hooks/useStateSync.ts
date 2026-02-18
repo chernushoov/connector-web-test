@@ -64,7 +64,6 @@ export function useStateSync(configs: SyncConfig[]) {
         if (!isOnline) return
 
         try {
-          // TODO: Replace with actual API calls
           const data = await fetchResource(config.resource)
           config.onUpdate?.(data)
           setLastSync((prev) => ({
@@ -121,24 +120,18 @@ export function useStateSync(configs: SyncConfig[]) {
   }
 }
 
-// Mock fetch function - replace with actual API
-async function fetchResource(resource: SyncResource): Promise<any> {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 500))
+const RESOURCE_ENDPOINTS: Record<SyncResource, string> = {
+  applications: '/api/applications',
+  shifts: '/api/shifts',
+  messages: '/api/chat/rooms',
+  notifications: '/api/notifications',
+}
 
-  // Return mock data based on resource type
-  switch (resource) {
-    case 'applications':
-      return { applications: [], count: 0 }
-    case 'shifts':
-      return { shifts: [], count: 0 }
-    case 'messages':
-      return { messages: [], unread: 0 }
-    case 'notifications':
-      return { notifications: [], unread: 0 }
-    default:
-      return {}
-  }
+async function fetchResource(resource: SyncResource): Promise<any> {
+  const endpoint = RESOURCE_ENDPOINTS[resource]
+  const res = await fetch(endpoint)
+  if (!res.ok) throw new Error(`Failed to fetch ${resource}`)
+  return res.json()
 }
 
 /**
@@ -211,12 +204,13 @@ export function useApplicationStatus(applicationId: string) {
 
     const fetchStatus = async () => {
       try {
-        // TODO: Replace with actual API call
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        const res = await fetch(`/api/applications/${applicationId}`)
+        if (!res.ok) throw new Error('Failed to fetch')
+        const data = await res.json()
 
         if (mounted) {
           setStatus({
-            current: 'pending', // Would come from API
+            current: data.application?.status || 'pending',
             lastUpdated: new Date(),
             isLoading: false,
           })
@@ -267,15 +261,17 @@ export function useShiftStatus(shiftId: string) {
 
     const fetchStatus = async () => {
       try {
-        // TODO: Replace with actual API call
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        const res = await fetch(`/api/shifts/${shiftId}`)
+        if (!res.ok) throw new Error('Failed to fetch')
+        const data = await res.json()
+        const shift = data.shift
 
-        if (mounted) {
+        if (mounted && shift) {
           setStatus({
-            current: 'open', // Would come from API
-            applicants: 3,
-            filled: 0,
-            slots: 2,
+            current: shift.status || 'open',
+            applicants: shift.applicant_count || 0,
+            filled: shift.filled_count || 0,
+            slots: shift.slots || 1,
             lastUpdated: new Date(),
             isLoading: false,
           })
@@ -313,11 +309,13 @@ export function useUnreadMessages() {
 
     const fetchUnread = async () => {
       try {
-        // TODO: Replace with actual API call
-        await new Promise((resolve) => setTimeout(resolve, 300))
+        const res = await fetch('/api/chat/rooms')
+        if (!res.ok) throw new Error('Failed to fetch')
+        const data = await res.json()
+        const total = (data.rooms || []).reduce((sum: number, r: { unread_count?: number }) => sum + (r.unread_count || 0), 0)
 
         if (mounted) {
-          setUnreadCount(0) // Would come from API
+          setUnreadCount(total)
           setIsLoading(false)
         }
       } catch (error) {

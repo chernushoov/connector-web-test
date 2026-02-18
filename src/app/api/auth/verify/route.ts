@@ -7,15 +7,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyOtpSchema, validate, formatErrors } from '@/lib/validators'
 import { rateLimit } from '@/lib/rate-limit'
-
-const isDemoMode = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    return !url || url.includes('placeholder')
-}
+import { isDemoMode } from '@/lib/demo'
+import { RATE_LIMITS, AUTH } from '@/lib/config'
 
 const verifyRateLimiter = rateLimit({
-    interval: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5, // max 5 attempts per phone per 15 min
+    interval: RATE_LIMITS.VERIFY_OTP.interval,
+    maxRequests: RATE_LIMITS.VERIFY_OTP.maxRequests,
 })
 
 export async function POST(request: NextRequest) {
@@ -70,8 +67,10 @@ export async function POST(request: NextRequest) {
             // Set demo cookie for middleware auth check
             response.cookies.set('demo-auth', 'true', {
                       path: '/',
-                      maxAge: 86400,
-                      httpOnly: false,
+                      maxAge: AUTH.DEMO_COOKIE_MAX_AGE,
+                      httpOnly: true,
+                      sameSite: 'lax',
+                      secure: process.env.NODE_ENV === 'production',
             })
 
             return response
@@ -129,7 +128,7 @@ export async function POST(request: NextRequest) {
                                 phone: data.user.phone || phone,
                                 name: data.user.phone || phone,
                                 user_type: 'worker',
-                    } as never)
+                    } as Record<string, unknown>)
           }
 
       return NextResponse.json({

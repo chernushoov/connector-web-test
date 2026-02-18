@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Current User Profile
  * GET /api/users/me - Get current user with full profile
@@ -8,11 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { updateWorkerProfileSchema, updateEmployerProfileSchema, validate, formatErrors } from '@/lib/validators'
-
-const isDemoMode = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  return !url || url.includes('placeholder')
-}
+import { isDemoMode } from '@/lib/demo'
+import { sanitizeObject } from '@/lib/sanitize'
 
 /**
  * GET - Get current user with full profile
@@ -169,11 +165,12 @@ export async function PATCH(request: NextRequest) {
 
     // Update base profile if has fields
     if (Object.keys(baseUpdate).length > 0) {
-      baseUpdate.updated_at = new Date().toISOString()
+      const sanitizedBase = sanitizeObject(baseUpdate, ['full_name', 'bio', 'city'])
+      sanitizedBase.updated_at = new Date().toISOString()
 
       const { error: baseError } = await supabaseAdmin
         .from('profiles')
-        .update(baseUpdate)
+        .update(sanitizedBase)
         .eq('id', user.id)
 
       if (baseError) {

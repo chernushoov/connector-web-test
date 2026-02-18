@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Stripe Subscription Webhook Handler
  * POST /api/subscriptions/webhook

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Escrow Payments API
  * POST /api/payments/escrow - Create escrow for a task

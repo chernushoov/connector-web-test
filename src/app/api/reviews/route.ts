@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Reviews API
  * GET /api/reviews - Get reviews (with filters)
@@ -8,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createReviewSchema, validate, formatErrors } from '@/lib/validators'
+import { sanitizeText } from '@/lib/sanitize'
+import { PAGINATION } from '@/lib/config'
 
 /**
  * GET - Get reviews with optional filters
@@ -64,8 +65,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Pagination
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
+    const page = parseInt(searchParams.get('page') || String(PAGINATION.DEFAULT_PAGE))
+    const limit = Math.min(parseInt(searchParams.get('limit') || String(PAGINATION.DEFAULT_LIMIT)), PAGINATION.MAX_LIMIT)
     const offset = (page - 1) * limit
 
     query = query
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
         reviewer_id: user.id,
         reviewee_id: revieweeId,
         rating,
-        comment,
+        comment: comment ? sanitizeText(comment) : null,
         tags: tags || [],
       })
       .select()

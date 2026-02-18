@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Release Escrow to Worker
  * POST /api/payments/escrow/[id]/release

@@ -1,6 +1,6 @@
-// @ts-nocheck
 /**
  * Subscriptions API
+ * GET /api/subscriptions - Get current user's subscription
  * POST /api/subscriptions - Create Stripe Checkout Session
  * DELETE /api/subscriptions - Cancel subscription
  */
@@ -18,6 +18,36 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
  */
 function isStripeConfigured(): boolean {
   return !!process.env.STRIPE_SECRET_KEY
+}
+
+/**
+ * GET - Get current user's active subscription
+ */
+export async function GET() {
+  try {
+    const user = await getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabaseAdmin = createAdminClient()
+
+    const { data: subscription, error } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single()
+
+    if (error || !subscription) {
+      return NextResponse.json({ subscription: null })
+    }
+
+    return NextResponse.json({ subscription })
+  } catch (error) {
+    console.error('Get subscription error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 /**

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Chat Rooms API
  * GET /api/chat/rooms - Get user's chat rooms

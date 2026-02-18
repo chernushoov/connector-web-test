@@ -63,7 +63,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <span className="text-2xl">{lang.flag}</span>
-                  <div className="flex-1 text-left">
+                  <div className="flex-1 text-start">
                     <p className="font-medium">{lang.nativeName}</p>
                     <p className="text-sm text-neutral-500">{lang.name}</p>
                   </div>
@@ -247,7 +247,7 @@ function MenuItem({
       className="w-full flex items-center gap-3 p-3 hover:bg-neutral-50 transition-colors"
     >
       <span className="text-neutral-400">{icon}</span>
-      <span className="flex-1 text-left font-medium">{label}</span>
+      <span className="flex-1 text-start font-medium">{label}</span>
       <ChevronRight className="w-5 h-5 text-neutral-400" />
     </button>
   )

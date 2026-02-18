@@ -158,11 +158,18 @@ export function QuickRegistration({
     setError('')
 
     try {
-      // TODO: Implement actual SMS sending
-      await new Promise((r) => setTimeout(r, 1000))
+      const res = await fetch('/api/auth/phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to send code')
+      }
       setStep('code')
-    } catch (e) {
-      setError('Failed to send code')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to send code')
     } finally {
       setIsLoading(false)
     }
@@ -177,11 +184,18 @@ export function QuickRegistration({
     setError('')
 
     try {
-      // TODO: Implement actual verification
-      await new Promise((r) => setTimeout(r, 1000))
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Invalid code')
+      }
       setStep('name')
-    } catch (e) {
-      setError('Invalid code')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Invalid code')
     } finally {
       setIsLoading(false)
     }

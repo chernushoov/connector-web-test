@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Dispute Messages API
  * GET /api/disputes/[id]/messages - Get messages
@@ -8,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { disputeMessageSchema, validate, formatErrors } from '@/lib/validators'
+import { sanitizeText } from '@/lib/sanitize'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .insert({
         dispute_id: id,
         sender_id: user.id,
-        content: validation.data.content,
+        content: sanitizeText(validation.data.content),
         attachments: validation.data.attachments || [],
       })
       .select(`

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useUI } from '@/store'
 import { t } from '@/i18n/translations'
-import { Header, Navigation, LoadingState, EmptyState } from '@/components/shared'
+import { Header, Navigation, LoadingState, ErrorState, EmptyState } from '@/components/shared'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -44,91 +44,6 @@ interface Notification {
   }
 }
 
-// Mock notifications
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'application',
-    title: 'Application Approved!',
-    body: 'Your application for Warehouse Helper at FastLogistics has been approved. Start tomorrow at 8:00 AM.',
-    createdAt: new Date(Date.now() - 3600000),
-    isRead: false,
-    actionUrl: '/worker/my-tasks',
-    metadata: {
-      shiftId: 'shift1',
-      shiftTitle: 'Warehouse Helper',
-      employerName: 'FastLogistics Ltd',
-    },
-  },
-  {
-    id: '2',
-    type: 'shift',
-    title: 'New shift matches your skills!',
-    body: 'Event Setup Crew needed in Herzliya. ₪65/hr, 6 spots available.',
-    createdAt: new Date(Date.now() - 7200000),
-    isRead: false,
-    actionUrl: '/worker/shifts/2',
-    metadata: {
-      shiftId: 'shift2',
-      shiftTitle: 'Event Setup Crew',
-    },
-  },
-  {
-    id: '3',
-    type: 'message',
-    title: 'New message from EventPro',
-    body: 'Please confirm your attendance for tomorrow\'s event.',
-    createdAt: new Date(Date.now() - 14400000),
-    isRead: true,
-    metadata: {
-      employerName: 'EventPro',
-    },
-  },
-  {
-    id: '4',
-    type: 'review',
-    title: 'New 5-star review!',
-    body: 'FastLogistics rated you 5 stars: "Excellent work, very reliable!"',
-    createdAt: new Date(Date.now() - 86400000),
-    isRead: true,
-    actionUrl: '/profile/reviews',
-    metadata: {
-      employerName: 'FastLogistics Ltd',
-      rating: 5,
-    },
-  },
-  {
-    id: '5',
-    type: 'promo',
-    title: 'Complete 5 more shifts this week',
-    body: 'Earn a ₪100 bonus! You\'ve completed 3/5 shifts.',
-    createdAt: new Date(Date.now() - 172800000),
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'system',
-    title: 'Profile verification complete',
-    body: 'Your documents have been verified. You now have full access to all features.',
-    createdAt: new Date(Date.now() - 259200000),
-    isRead: true,
-    actionUrl: '/profile/documents',
-  },
-  {
-    id: '7',
-    type: 'shift',
-    title: 'Urgent: Workers needed today!',
-    body: 'Moving Assistant in Ramat Gan. ₪60/hr, starts in 3 hours.',
-    createdAt: new Date(Date.now() - 432000000),
-    isRead: true,
-    actionUrl: '/worker/shifts/3',
-    metadata: {
-      shiftId: 'shift3',
-      shiftTitle: 'Moving Assistant',
-    },
-  },
-]
-
 const notificationIcons: Record<Notification['type'], React.ReactNode> = {
   shift: <Briefcase className="w-5 h-5" />,
   application: <Check className="w-5 h-5" />,
@@ -154,16 +69,34 @@ export default function NotificationsPage() {
 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
 
-  useEffect(() => {
-    const load = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      setNotifications(mockNotifications)
+  const fetchNotifications = useCallback(async () => {
+    setIsLoading(true)
+    setError(false)
+    try {
+      const res = await fetch('/api/notifications')
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(
+          (data.notifications || []).map((n: Record<string, unknown>) => ({
+            ...n,
+            createdAt: new Date(n.createdAt as string || n.created_at as string),
+            isRead: n.isRead ?? n.read ?? false,
+          }))
+        )
+      }
+    } catch {
+      setError(true)
+    } finally {
       setIsLoading(false)
     }
-    load()
   }, [])
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [fetchNotifications])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
@@ -197,7 +130,7 @@ export default function NotificationsPage() {
   }
 
   const handleClearAll = () => {
-    if (confirm('Clear all notifications?')) {
+    if (confirm(t('confirm.clearNotifications', language as Language))) {
       setNotifications([])
     }
   }
@@ -209,9 +142,9 @@ export default function NotificationsPage() {
     const hours = Math.floor(diff / 3600000)
     const days = Math.floor(diff / 86400000)
 
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
+    if (minutes < 60) return `${minutes} ${t('time.minutesAgo', language as Language)}`
+    if (hours < 24) return `${hours} ${t('time.hoursAgo', language as Language)}`
+    if (days < 7) return `${days} ${t('time.daysAgo', language as Language)}`
     return date.toLocaleDateString()
   }
 
@@ -222,8 +155,8 @@ export default function NotificationsPage() {
     const yesterday = new Date(Date.now() - 86400000).toDateString()
 
     let groupKey = date
-    if (date === today) groupKey = 'Today'
-    else if (date === yesterday) groupKey = 'Yesterday'
+    if (date === today) groupKey = t('time.today', language as Language)
+    else if (date === yesterday) groupKey = t('time.yesterday', language as Language)
     else groupKey = notification.createdAt.toLocaleDateString()
 
     if (!groups[groupKey]) groups[groupKey] = []
@@ -242,7 +175,8 @@ export default function NotificationsPage() {
         rightContent={
           <button
             onClick={() => window.location.href = '/profile/settings'}
-            className="p-2 hover:bg-neutral-100 rounded-full"
+            aria-label="Settings"
+            className="p-2 hover:bg-neutral-100 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary"
           >
             <Settings className="w-5 h-5 text-neutral-600" />
           </button>
@@ -253,16 +187,16 @@ export default function NotificationsPage() {
       <div className="bg-white border-b border-neutral-100 px-4 py-3">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {[
-            { id: 'all', label: 'All' },
-            { id: 'unread', label: `Unread (${unreadCount})` },
-            { id: 'shifts', label: 'Shifts' },
-            { id: 'messages', label: 'Messages' },
+            { id: 'all', label: t('tabs.all', language as Language) },
+            { id: 'unread', label: `${t('tabs.unread', language as Language)} (${unreadCount})` },
+            { id: 'shifts', label: t('tabs.shifts', language as Language) },
+            { id: 'messages', label: t('tabs.messages', language as Language) },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as FilterTab)}
               className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+                'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/50',
                 activeTab === tab.id
                   ? 'bg-brand-primary text-white'
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
@@ -282,7 +216,7 @@ export default function NotificationsPage() {
               onClick={handleMarkAllAsRead}
               leftIcon={<CheckCheck className="w-4 h-4" />}
             >
-              Mark all as read
+              {t('notifications.markAllRead', language as Language)}
             </Button>
           </div>
         )}
@@ -291,16 +225,18 @@ export default function NotificationsPage() {
       <main className="px-4 py-4">
         {isLoading ? (
           <LoadingState variant="skeleton" />
+        ) : error ? (
+          <ErrorState type="network" onRetry={fetchNotifications} />
         ) : filteredNotifications.length === 0 ? (
           <EmptyState
             icon={activeTab === 'unread' ? <CheckCheck className="w-16 h-16" /> : <Bell className="w-16 h-16" />}
             title={activeTab === 'unread'
-              ? 'All caught up!'
+              ? t('empty.allCaughtUp', language as Language)
               : t('notifications.empty', language as Language)
             }
             subtitle={activeTab === 'unread'
-              ? 'You have no unread notifications'
-              : 'You\'ll see shift updates, messages, and more here'
+              ? t('empty.noUnread', language as Language)
+              : t('empty.noNotifications.subtitle', language as Language)
             }
           />
         ) : (
@@ -335,7 +271,7 @@ export default function NotificationsPage() {
                 leftIcon={<Trash2 className="w-4 h-4" />}
                 className="text-neutral-500"
               >
-                Clear all notifications
+                {t('notifications.clearAll', language as Language)}
               </Button>
             )}
           </div>
@@ -358,6 +294,7 @@ function NotificationCard({
   onDelete: () => void
   formatTime: (date: Date) => string
 }) {
+  const { language } = useUI()
   const [showActions, setShowActions] = useState(false)
 
   const handleClick = () => {
@@ -422,8 +359,8 @@ function NotificationCard({
             {/* Urgency indicator for shift notifications */}
             {notification.type === 'shift' && notification.title.includes('Urgent') && (
               <Badge variant="danger" size="sm" className="mt-2">
-                <Zap className="w-3 h-3 mr-1" />
-                Urgent
+                <Zap className="w-3 h-3 me-1" />
+                {t('common.urgent', language as Language)}
               </Badge>
             )}
           </div>
@@ -436,7 +373,7 @@ function NotificationCard({
 
         {/* Swipe actions or menu (simplified for now) */}
         {showActions && (
-          <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-4 bg-gradient-to-l from-white via-white to-transparent pl-8">
+          <div className="absolute inset-y-0 end-0 flex items-center gap-2 pe-4 bg-gradient-to-l from-white via-white to-transparent ps-8">
             {!notification.isRead && (
               <button
                 onClick={(e) => {

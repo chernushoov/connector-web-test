@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AUTH } from '@/lib/config'
 
 const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET
 
@@ -25,7 +26,7 @@ function hmacSign(data: string): string {
 
 export function signAdminToken(payload: Omit<AdminPayload, 'iat' | 'exp'>): string {
   const now = Math.floor(Date.now() / 1000)
-  const data = { ...payload, iat: now, exp: now + 7 * 24 * 60 * 60 }
+  const data = { ...payload, iat: now, exp: now + AUTH.ADMIN_TOKEN_EXPIRY_SECONDS }
   const dataB64 = Buffer.from(JSON.stringify(data)).toString('base64url')
   const signature = hmacSign(dataB64)
   return `${dataB64}.${signature}`

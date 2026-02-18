@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Disputes API
  * GET /api/disputes - Get my disputes
@@ -8,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createDisputeSchema, validate, formatErrors } from '@/lib/validators'
+import { sanitizeText } from '@/lib/sanitize'
+import { PAGINATION } from '@/lib/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,8 +21,8 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     const status = searchParams.get('status')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
+    const page = parseInt(searchParams.get('page') || String(PAGINATION.DEFAULT_PAGE))
+    const limit = Math.min(parseInt(searchParams.get('limit') || String(PAGINATION.DEFAULT_LIMIT)), PAGINATION.ADMIN_MAX_LIMIT)
     const offset = (page - 1) * limit
 
     let query = supabase
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
         initiator_id: user.id,
         respondent_id: data.respondent_id,
         type: data.type,
-        description: data.description,
+        description: sanitizeText(data.description),
         evidence: data.evidence || [],
         priority: data.priority || 'medium',
         status: 'open',

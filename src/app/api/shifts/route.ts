@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Shifts API
  * GET /api/shifts - List shifts (with basic filters)
@@ -9,11 +8,9 @@ import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createShiftSchema, validate, formatErrors } from '@/lib/validators'
 import { getAgent } from '@/lib/agent'
-
-const isDemoMode = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    return !url || url.includes('placeholder')
-}
+import { isDemoMode } from '@/lib/demo'
+import { sanitizeText } from '@/lib/sanitize'
+import { PAGINATION, SHIFTS } from '@/lib/config'
 
 const demoShifts = [
   {
@@ -256,12 +253,12 @@ export async function GET(request: NextRequest) {
           }
 
       // Pagination
-      const page = parseInt(searchParams.get('page') || '1')
-          const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20') || 20, 1), 100)
+      const page = parseInt(searchParams.get('page') || String(PAGINATION.DEFAULT_PAGE))
+          const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || String(PAGINATION.DEFAULT_LIMIT)) || PAGINATION.DEFAULT_LIMIT, 1), PAGINATION.MAX_LIMIT)
           const offset = Math.max((page - 1) * limit, 0)
 
       // Sorting (allowlist to prevent injection)
-      const ALLOWED_SORT_FIELDS = ['created_at', 'date', 'hourly_rate', 'title', 'city', 'urgency']
+      const ALLOWED_SORT_FIELDS: readonly string[] = SHIFTS.ALLOWED_SORT_FIELDS
           const sortByParam = searchParams.get('sort_by') || 'created_at'
           const sortBy = ALLOWED_SORT_FIELDS.includes(sortByParam) ? sortByParam : 'created_at'
           const sortOrder = searchParams.get('sort_order') === 'asc' ? true : false
@@ -329,13 +326,18 @@ export async function POST(request: NextRequest) {
 
       const supabaseAdmin = createAdminClient()
 
+      const shiftData = {
+            ...validation.data,
+            title: sanitizeText(validation.data.title),
+            description: sanitizeText(validation.data.description),
+            address: validation.data.address ? sanitizeText(validation.data.address) : validation.data.address,
+            employer_id: user.id,
+            status: 'published',
+      }
+
       const { data: shift, error } = await supabaseAdmin
             .from('shifts')
-            .insert({
-                      ...validation.data,
-                      employer_id: user.id,
-                      status: 'published',
-            })
+            .insert(shiftData)
             .select()
             .single()
 

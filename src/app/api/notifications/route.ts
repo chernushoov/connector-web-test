@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Notifications API
  * GET /api/notifications - Get user notifications

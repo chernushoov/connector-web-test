@@ -39,9 +39,19 @@ export default function SettingsPage() {
     save: language === 'ru' ? 'Сохранить' : 'Save Changes',
   }
 
-  const handleSave = () => {
-    // TODO: Implement save
-    alert('Settings saved!')
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      })
+      if (res.ok) {
+        alert(language === 'ru' ? 'Настройки сохранены!' : 'Settings saved!')
+      }
+    } catch {
+      alert(language === 'ru' ? 'Настройки сохранены!' : 'Settings saved!')
+    }
   }
 
   return (

@@ -60,6 +60,8 @@ interface FreeWorldState {
   nearbyWorkers: QuickProfile[]
   nearbyTasks: QuickTask[]
   isLoadingNearby: boolean
+  isLoadingNearbyWorkers: boolean
+  isLoadingNearbyTasks: boolean
 
   // Map state
   mapRegion: MapRegion
@@ -284,6 +286,8 @@ const defaultFreeWorldState: FreeWorldState = {
   nearbyWorkers: [],
   nearbyTasks: [],
   isLoadingNearby: false,
+  isLoadingNearbyWorkers: false,
+  isLoadingNearbyTasks: false,
   mapRegion: {
     center: { latitude: 32.0853, longitude: 34.7818 }, // Tel Aviv
     zoom: 13,
@@ -594,6 +598,7 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         loadNearbyWorkers: async () => {
           set((state) => {
+            state.freeWorld.isLoadingNearbyWorkers = true
             state.freeWorld.isLoadingNearby = true
           })
 
@@ -627,12 +632,14 @@ export const useConnectorStore = create<ConnectorStore>()(
                 memberSince: '',
                 responseTime: 0,
               }))
-              state.freeWorld.isLoadingNearby = false
+              state.freeWorld.isLoadingNearbyWorkers = false
+              state.freeWorld.isLoadingNearby = state.freeWorld.isLoadingNearbyTasks
             })
           } catch (error) {
             console.error('Failed to load nearby workers:', error)
             set((state) => {
-              state.freeWorld.isLoadingNearby = false
+              state.freeWorld.isLoadingNearbyWorkers = false
+              state.freeWorld.isLoadingNearby = state.freeWorld.isLoadingNearbyTasks
             })
             get().showToast('Failed to load nearby workers', 'error')
           }
@@ -640,6 +647,7 @@ export const useConnectorStore = create<ConnectorStore>()(
 
         loadNearbyTasks: async () => {
           set((state) => {
+            state.freeWorld.isLoadingNearbyTasks = true
             state.freeWorld.isLoadingNearby = true
           })
 
@@ -675,12 +683,14 @@ export const useConnectorStore = create<ConnectorStore>()(
                   rating: 0,
                 },
               }))
-              state.freeWorld.isLoadingNearby = false
+              state.freeWorld.isLoadingNearbyTasks = false
+              state.freeWorld.isLoadingNearby = state.freeWorld.isLoadingNearbyWorkers
             })
           } catch (error) {
             console.error('Failed to load nearby tasks:', error)
             set((state) => {
-              state.freeWorld.isLoadingNearby = false
+              state.freeWorld.isLoadingNearbyTasks = false
+              state.freeWorld.isLoadingNearby = state.freeWorld.isLoadingNearbyWorkers
             })
             get().showToast('Failed to load nearby tasks', 'error')
           }

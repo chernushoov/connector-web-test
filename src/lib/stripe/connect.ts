@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Stripe Connect for Worker Payouts
  */

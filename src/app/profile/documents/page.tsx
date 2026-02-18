@@ -194,7 +194,7 @@ export default function DocumentsPage() {
                             size="sm"
                           >
                             {statusInfo.icon}
-                            <span className="ml-1">{statusInfo.label}</span>
+                            <span className="ms-1">{statusInfo.label}</span>
                           </Badge>
                         )}
                       </div>

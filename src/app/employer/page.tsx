@@ -19,8 +19,7 @@ import {
   Bell,
   Search
 } from 'lucide-react'
-import { mockShifts } from '@/data/mockData'
-import type { ShiftPosting } from '@/types'
+import type { ShiftPosting, Language } from '@/types'
 
 export default function EmployerDashboard() {
   const router = useRouter()
@@ -28,7 +27,7 @@ export default function EmployerDashboard() {
   const { myShifts, isLoadingShifts, totalPaid, activeWorkers, shiftsThisMonth, pendingApplications } = useEmployer()
   const { setMode, loadMyShifts, showToast } = useConnectorStore()
 
-  const [displayShifts, setDisplayShifts] = useState<ShiftPosting[]>(mockShifts)
+  const [displayShifts, setDisplayShifts] = useState<ShiftPosting[]>([])
 
   // Set mode on mount
   useEffect(() => {
@@ -37,9 +36,7 @@ export default function EmployerDashboard() {
   }, [setMode, loadMyShifts])
 
   useEffect(() => {
-    if (myShifts.length > 0) {
-      setDisplayShifts(myShifts)
-    }
+    setDisplayShifts(myShifts)
   }, [myShifts])
 
   const totalApplicants = displayShifts.reduce((sum, s) => sum + s.applicants, 0)
@@ -62,7 +59,7 @@ export default function EmployerDashboard() {
             onClick={() => router.push('/employer/create-shift')}
             leftIcon={<Plus className="w-4 h-4" />}
           >
-            Post
+            {t('employer.post', language as Language)}
           </Button>
         }
       />
@@ -73,22 +70,22 @@ export default function EmployerDashboard() {
           <div className="grid grid-cols-2 gap-3">
             <StatsCard
               icon={<DollarSign className="w-5 h-5" />}
-              label="Total paid"
+              label={t('employer.totalPaid', language as Language)}
               value={`₪${totalPaid.toLocaleString()}`}
             />
             <StatsCard
               icon={<Users className="w-5 h-5" />}
-              label="Active workers"
+              label={t('employer.activeWorkers', language as Language)}
               value={activeWorkers}
             />
             <StatsCard
               icon={<Briefcase className="w-5 h-5" />}
-              label="Shifts this month"
+              label={t('employer.shiftsThisMonth', language as Language)}
               value={shiftsThisMonth}
             />
             <StatsCard
               icon={<TrendingUp className="w-5 h-5" />}
-              label="Pending applicants"
+              label={t('employer.pendingApplicants', language as Language)}
               value={totalApplicants}
               change={totalApplicants > 0 ? 100 : 0}
               trend="up"
@@ -110,10 +107,10 @@ export default function EmployerDashboard() {
                 </div>
                 <div>
                   <h3 className="font-semibold">
-                    {totalApplicants} applicants waiting
+                    {totalApplicants} {t('employer.applicantsWaiting', language as Language)}
                   </h3>
                   <p className="text-sm opacity-80">
-                    Review and approve workers
+                    {t('employer.reviewApprove', language as Language)}
                   </p>
                 </div>
               </div>
@@ -122,7 +119,7 @@ export default function EmployerDashboard() {
                 size="sm"
                 onClick={() => router.push('/employer/applicants')}
               >
-                Review
+                {t('employer.review', language as Language)}
               </Button>
             </div>
           </motion.div>
@@ -133,23 +130,23 @@ export default function EmployerDashboard() {
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             <QuickActionButton
               icon={<Plus className="w-5 h-5" />}
-              label="New shift"
+              label={t('employer.newShift', language as Language)}
               onClick={() => router.push('/employer/create-shift')}
               highlight
             />
             <QuickActionButton
               icon={<Users className="w-5 h-5" />}
-              label="All applicants"
+              label={t('employer.allApplicants', language as Language)}
               onClick={() => router.push('/employer/applicants')}
             />
             <QuickActionButton
               icon={<Briefcase className="w-5 h-5" />}
-              label="My shifts"
+              label={t('page.myShifts', language as Language)}
               onClick={() => router.push('/employer/my-shifts')}
             />
             <QuickActionButton
               icon={<Search className="w-5 h-5" />}
-              label="Find workers"
+              label={t('employer.findWorkers', language as Language)}
               onClick={() => router.push('/search')}
             />
           </div>
@@ -159,14 +156,14 @@ export default function EmployerDashboard() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-neutral-900">
-              Active Shifts
+              {t('employer.activeShifts', language as Language)}
             </h2>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push('/employer/my-shifts')}
             >
-              See all
+              {t('employer.seeAll', language as Language)}
             </Button>
           </div>
 
@@ -192,7 +189,7 @@ export default function EmployerDashboard() {
                     onViewApplicants={() => router.push(`/employer/shift/${shift.id}`)}
                     onShare={() => {
                       navigator.clipboard.writeText(`${window.location.origin}/shift/${shift.id}`)
-                      showToast('Link copied to clipboard', 'success')
+                      showToast(t('common.copied', language as Language), 'success')
                     }}
                     onDuplicate={() => {
                       router.push(`/employer/create-shift?duplicate=${shift.id}`)

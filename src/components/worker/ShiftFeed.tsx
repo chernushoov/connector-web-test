@@ -22,7 +22,6 @@ import {
   ChevronRight,
   TrendingUp
 } from 'lucide-react'
-import { mockShifts } from '@/data/mockData'
 import type { ShiftPosting } from '@/types'
 
 interface ShiftFeedProps {
@@ -35,18 +34,15 @@ export function ShiftFeed({ onShiftClick, className }: ShiftFeedProps) {
   const { shifts, isLoadingShifts, filters } = useWorker()
   const { loadShifts, applyToShift } = useConnectorStore()
 
-  const [displayShifts, setDisplayShifts] = useState<ShiftPosting[]>(mockShifts)
+  const [displayShifts, setDisplayShifts] = useState<ShiftPosting[]>([])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadShifts()
   }, [])
 
-  // Use mock data if no shifts from store
   useEffect(() => {
-    if (shifts.length > 0) {
-      setDisplayShifts(shifts)
-    }
+    setDisplayShifts(shifts)
   }, [shifts])
 
   const handleApply = async (shiftId: string, e: React.MouseEvent) => {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Single Shift API
  * GET /api/shifts/[id] - Get shift details

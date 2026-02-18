@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Chat Messages API
  * GET /api/chat/rooms/[id]/messages - Get messages
@@ -8,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAgent } from '@/lib/agent'
+import { sanitizeText } from '@/lib/sanitize'
+import { CONTENT_LIMITS } from '@/lib/config'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -91,9 +92,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 })
     }
 
-    if (content.length > 5000) {
-      return NextResponse.json({ error: 'Message too long (max 5000 chars)' }, { status: 400 })
+    if (content.length > CONTENT_LIMITS.MAX_MESSAGE_LENGTH) {
+      return NextResponse.json({ error: `Message too long (max ${CONTENT_LIMITS.MAX_MESSAGE_LENGTH} chars)` }, { status: 400 })
     }
+
+    // Sanitize content to prevent XSS
+    const sanitizedContent = sanitizeText(content)
 
     const supabaseAdmin = createAdminClient()
 
@@ -114,7 +118,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       agent.start()
       const modResult = await agent.moderateMessage({
         id: `msg-${Date.now()}`,
-        content: content.trim(),
+        content: sanitizedContent,
         senderId: user.id,
         createdAt: new Date(),
       })
@@ -134,7 +138,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .insert({
         room_id: id,
         sender_id: user.id,
-        content: content.trim(),
+        content: sanitizedContent,
         type,
         metadata: metadata || null,
         is_read: false,
@@ -154,7 +158,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('chat_rooms')
       .update({
         last_message_at: new Date().toISOString(),
-        last_message: content.trim().slice(0, 100),
+        last_message: sanitizedContent.slice(0, 100),
       })
       .eq('id', id)
 
@@ -167,7 +171,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       user_id: recipientId,
       type: 'message',
       title: 'Новое сообщение',
-      body: content.trim().slice(0, 50),
+      body: sanitizedContent.slice(0, 50),
       data: { room_id: id, message_id: message.id },
     })
 
