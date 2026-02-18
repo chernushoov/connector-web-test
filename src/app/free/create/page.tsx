@@ -55,7 +55,7 @@ export default function FreeCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    setMode('free')
+    setMode('free-world')
   }, [setMode])
 
   const handleCategorySelect = (categoryId: string) => {

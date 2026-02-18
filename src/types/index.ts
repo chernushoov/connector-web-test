@@ -12,6 +12,37 @@ export type UserMode = 'free-world' | 'worker' | 'employer'
 
 export type UserRole = 'worker' | 'employer'
 
+export interface TabConfig {
+  id: string
+  labelKey: string
+  icon: string
+  href: string
+}
+
+export const FREE_TABS: TabConfig[] = [
+  { id: 'map', labelKey: 'tabs.map', icon: 'Map', href: '/free' },
+  { id: 'chat', labelKey: 'tabs.chat', icon: 'MessageCircle', href: '/free/chat' },
+  { id: 'create', labelKey: 'tabs.create', icon: 'PlusCircle', href: '/free/create' },
+  { id: 'activity', labelKey: 'tabs.activity', icon: 'Activity', href: '/free/activity' },
+  { id: 'profile', labelKey: 'tabs.profile', icon: 'User', href: '/free/profile' },
+]
+
+export const WORKER_TABS: TabConfig[] = [
+  { id: 'shifts', labelKey: 'tabs.shifts', icon: 'List', href: '/worker' },
+  { id: 'instant', labelKey: 'tabs.instant', icon: 'Zap', href: '/worker/instant' },
+  { id: 'history', labelKey: 'tabs.history', icon: 'Clock', href: '/worker/history' },
+  { id: 'favorites', labelKey: 'tabs.favorites', icon: 'Star', href: '/worker/favorites' },
+  { id: 'tasks', labelKey: 'tabs.tasks', icon: 'CheckSquare', href: '/worker/tasks' },
+  { id: 'profile', labelKey: 'tabs.profile', icon: 'User', href: '/worker/profile' },
+]
+
+export const EMPLOYER_TABS: TabConfig[] = [
+  { id: 'dashboard', labelKey: 'tabs.dashboard', icon: 'LayoutGrid', href: '/employer' },
+  { id: 'favorites', labelKey: 'tabs.favorites', icon: 'Star', href: '/employer/favorites' },
+  { id: 'tasks', labelKey: 'tabs.tasks', icon: 'CheckSquare', href: '/employer/tasks' },
+  { id: 'escrow', labelKey: 'tabs.escrow', icon: 'Shield', href: '/employer/escrow' },
+]
+
 export type AvailabilityStatus = 'available' | 'busy' | 'offline'
 
 export type WorkerAvailability = 'now' | 'today' | 'tomorrow' | 'flexible'
@@ -409,9 +440,9 @@ export interface Notification {
 
 export interface MapMarker {
   id: string
-  type: 'worker' | 'task' | 'employer'
+  type: 'worker' | 'task' | 'employer' | 'shift'
   coordinates: Coordinates
-  data: QuickProfile | QuickTask | ShiftPosting
+  data: QuickProfile | QuickTask | ShiftPosting | QuickTaskDB
   isUrgent?: boolean
   isPro?: boolean
   isAvailable?: boolean
@@ -438,6 +469,124 @@ export interface FilterState {
   skills?: string[]
   urgency?: ShiftUrgency[]
 }
+
+// ============================================
+// FREE WORLD TYPES
+// ============================================
+
+export type TaskSchedule = 'NOW' | 'TODAY' | 'TOMORROW' | 'SCHEDULED'
+
+export type QuickTaskStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CANCELLED'
+
+export type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN'
+
+export interface FreeProfile {
+  id: string
+  phone: string
+  name?: string
+  locale: Language
+  isOnline: boolean
+  lastSeenAt?: Date
+  headline?: string
+  tags: string[]
+  avatar?: string
+  lat?: number
+  lng?: number
+  rating?: number
+  reviewCount?: number
+  tasksCompleted?: number
+  createdAt: Date
+}
+
+export interface QuickTaskDB {
+  id: string
+  creatorId: string
+  creator?: FreeProfile
+  title: string
+  description: string
+  category: string
+  lat: number
+  lng: number
+  addressText: string
+  budgetType: 'FIXED' | 'RANGE' | 'NEGOTIABLE'
+  budgetMin?: number
+  budgetMax?: number
+  schedule: TaskSchedule
+  scheduledAt?: Date
+  status: QuickTaskStatus
+  assignedExecutorId?: string
+  assignedExecutor?: FreeProfile
+  createdAt: Date
+  updatedAt: Date
+  completedAt?: Date
+  offersCount?: number
+  distance?: number
+  photos?: string[]
+}
+
+export interface Offer {
+  id: string
+  taskId: string
+  task?: QuickTaskDB
+  bidderId: string
+  bidder?: FreeProfile
+  receiverId: string
+  receiver?: FreeProfile
+  message?: string
+  proposedPrice: number
+  status: OfferStatus
+  createdAt: Date
+}
+
+export interface ChatThread {
+  id: string
+  taskId: string
+  task?: QuickTaskDB
+  participantAId: string
+  participantA?: FreeProfile
+  participantBId: string
+  participantB?: FreeProfile
+  lastMessageAt?: Date
+  createdAt: Date
+  unreadCount?: number
+  lastMessage?: Message
+}
+
+export interface Message {
+  id: string
+  threadId: string
+  senderId: string
+  sender?: FreeProfile
+  text: string
+  readAt?: Date
+  createdAt: Date
+}
+
+export interface CreateTaskInput {
+  title: string
+  description?: string
+  category: string
+  lat: number
+  lng: number
+  addressText: string
+  budgetType: 'FIXED' | 'RANGE' | 'NEGOTIABLE'
+  budgetMin?: number
+  budgetMax?: number
+  schedule: TaskSchedule
+  scheduledAt?: string
+}
+
+export const TASK_CATEGORIES = [
+  { code: 'delivery', labelRu: 'Доставка', labelHe: 'משלוח', labelEn: 'Delivery', icon: '📦' },
+  { code: 'cleaning', labelRu: 'Уборка', labelHe: 'ניקיון', labelEn: 'Cleaning', icon: '🧹' },
+  { code: 'handyman', labelRu: 'Мелкий ремонт', labelHe: 'תיקונים קטנים', labelEn: 'Handyman', icon: '🔧' },
+  { code: 'moving', labelRu: 'Переезд', labelHe: 'הובלות', labelEn: 'Moving', icon: '🚚' },
+  { code: 'pets', labelRu: 'Животные', labelHe: 'חיות מחמד', labelEn: 'Pet Care', icon: '🐕' },
+  { code: 'shopping', labelRu: 'Покупки', labelHe: 'קניות', labelEn: 'Shopping', icon: '🛒' },
+  { code: 'tech', labelRu: 'Техника', labelHe: 'טכנולוגיה', labelEn: 'Tech Help', icon: '💻' },
+  { code: 'garden', labelRu: 'Сад/огород', labelHe: 'גינון', labelEn: 'Gardening', icon: '🌿' },
+  { code: 'other', labelRu: 'Другое', labelHe: 'אחר', labelEn: 'Other', icon: '📋' },
+] as const
 
 // ============================================
 // API RESPONSES

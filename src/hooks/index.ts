@@ -14,3 +14,5 @@ export {
 } from './useStateSync'
 export { useModeration, getModerationMessage } from './useModeration'
 export type { ModerationResult, ModerationState } from './useModeration'
+export { useAuthGate, usePendingAction } from './useAuthGate'
+export { useTelemetry } from './useTelemetry'

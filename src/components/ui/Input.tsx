@@ -241,6 +241,90 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 SearchInput.displayName = 'SearchInput'
 
 // ============================================
+// TEXTAREA COMPONENT
+// ============================================
+
+export interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string
+  error?: string
+  hint?: string
+}
+
+export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
+  ({ className, label, error, hint, ...props }, ref) => {
+    const [isFocused, setIsFocused] = useState(false)
+
+    return (
+      <div className="w-full">
+        {label && (
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            {label}
+          </label>
+        )}
+        <div className="relative">
+          <textarea
+            ref={ref}
+            onFocus={(e) => {
+              setIsFocused(true)
+              props.onFocus?.(e)
+            }}
+            onBlur={(e) => {
+              setIsFocused(false)
+              props.onBlur?.(e)
+            }}
+            className={cn(
+              'w-full rounded-xl border bg-white text-neutral-900 px-4 py-3',
+              'placeholder:text-neutral-400',
+              'transition-all duration-200 resize-none',
+              'focus:outline-none focus:ring-2',
+              error
+                ? 'border-danger focus:border-danger focus:ring-danger/20'
+                : 'border-neutral-200 focus:border-brand-primary focus:ring-brand-primary/20',
+              className
+            )}
+            {...props}
+          />
+          <motion.div
+            initial={false}
+            animate={{
+              scaleX: isFocused ? 1 : 0,
+              opacity: isFocused ? 1 : 0,
+            }}
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-[calc(100%-2rem)]
+                       bg-gradient-brand rounded-full"
+          />
+        </div>
+        <AnimatePresence mode="wait">
+          {error ? (
+            <motion.p
+              key="error"
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="mt-1.5 text-sm text-danger"
+            >
+              {error}
+            </motion.p>
+          ) : hint ? (
+            <motion.p
+              key="hint"
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="mt-1.5 text-sm text-neutral-500"
+            >
+              {hint}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+      </div>
+    )
+  }
+)
+
+TextArea.displayName = 'TextArea'
+
+// ============================================
 // OTP INPUT (for verification code)
 // ============================================
 

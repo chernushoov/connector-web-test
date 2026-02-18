@@ -125,9 +125,9 @@ export default function SettingsPage() {
               icon={<UserIcon className="w-5 h-5" />}
               label="Free User"
               description="Create and complete quick tasks"
-              selected={mode === 'free'}
+              selected={mode === 'free-world'}
               onClick={() => {
-                setMode('free')
+                setMode('free-world')
                 router.push('/free')
               }}
             />

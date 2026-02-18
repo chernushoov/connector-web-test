@@ -71,7 +71,7 @@ export default function FreeActivityPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   useEffect(() => {
-    setMode('free')
+    setMode('free-world')
     loadMyCreatedTasks()
     loadOffers().then((result) => { if (result) setHasMoreOffers(result.sentHasMore) })
   }, [setMode, loadMyCreatedTasks, loadOffers])

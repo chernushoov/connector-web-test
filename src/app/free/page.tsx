@@ -51,7 +51,7 @@ export default function FreeMapPage() {
   const [selectedTask, setSelectedTask] = useState<QuickTaskDB | null>(null)
 
   useEffect(() => {
-    setMode('free')
+    setMode('free-world')
     requestLocation()
     loadTasks()
   }, [setMode, requestLocation, loadTasks])

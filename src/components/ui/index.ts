@@ -7,8 +7,8 @@ export { Button, IconButton, CTAButton } from './Button'
 export type { ButtonProps, IconButtonProps, CTAButtonProps } from './Button'
 
 // Inputs
-export { Input, PhoneInput, SearchInput, OTPInput } from './Input'
-export type { InputProps, PhoneInputProps, SearchInputProps, OTPInputProps } from './Input'
+export { Input, PhoneInput, SearchInput, OTPInput, TextArea } from './Input'
+export type { InputProps, PhoneInputProps, SearchInputProps, OTPInputProps, TextAreaProps } from './Input'
 
 // Badges
 export {
